@@ -1,0 +1,11 @@
+from pathlib import Path
+path = Path('/home/ubuntu/streambox-iptv/client/src/pages/Home.tsx')
+text = path.read_text()
+text = text.replace('href="#top"', 'href="/home"')
+text = text.replace('href="#live-tv"', 'href="/live"')
+text = text.replace('href="#music-tv"', 'href="/channels?category=music"')
+text = text.replace('href="#my-list"', 'href="/favorites"')
+text = text.replace('href="#featured"', 'href="/home#featured"')
+text = text.replace('href="#channels"', 'href="/channels"')
+path.write_text(text)
+print('Home navigation routed')
