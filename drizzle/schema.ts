@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, primaryKey, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { bigint, index, int, mysqlEnum, mysqlTable, primaryKey, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -59,6 +59,49 @@ export const roomPlayback = mysqlTable("watch_room_playback", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const channelReactions = mysqlTable("channel_reactions", {
+  channelId: varchar("channelId", { length: 128 }).notNull(),
+  userId: int("userId").notNull(),
+  reaction: mysqlEnum("reaction", ["like", "dislike"]).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.channelId, table.userId] }),
+  channelIdx: index("channel_reactions_channel_idx").on(table.channelId),
+}));
+
+export const channelComments = mysqlTable("channel_comments", {
+  id: int("id").autoincrement().primaryKey(),
+  channelId: varchar("channelId", { length: 128 }).notNull(),
+  userId: int("userId").notNull(),
+  body: text("body").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  channelIdx: index("channel_comments_channel_idx").on(table.channelId),
+}));
+
+export const channelShares = mysqlTable("channel_shares", {
+  id: int("id").autoincrement().primaryKey(),
+  channelId: varchar("channelId", { length: 128 }).notNull(),
+  channelName: varchar("channelName", { length: 240 }).notNull(),
+  userId: int("userId").notNull(),
+  recipient: varchar("recipient", { length: 180 }).notNull(),
+  method: mysqlEnum("method", ["copy", "email", "whatsapp", "direct"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  channelIdx: index("channel_shares_channel_idx").on(table.channelId),
+  userIdx: index("channel_shares_user_idx").on(table.userId),
+}));
+
+export const memberships = mysqlTable("memberships", {
+  userId: int("userId").primaryKey(),
+  plan: mysqlEnum("plan", ["free", "plus", "max"]).default("plus").notNull(),
+  status: mysqlEnum("status", ["trial", "active", "past_due", "canceled"]).default("trial").notNull(),
+  trialEndsAt: bigint("trialEndsAt", { mode: "number" }).notNull(),
+  currentPeriodEndsAt: bigint("currentPeriodEndsAt", { mode: "number" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Room = typeof rooms.$inferSelect;
@@ -66,3 +109,7 @@ export type RoomMember = typeof roomMembers.$inferSelect;
 export type RoomMessage = typeof roomMessages.$inferSelect;
 export type RoomSignal = typeof roomSignals.$inferSelect;
 export type RoomPlayback = typeof roomPlayback.$inferSelect;
+export type ChannelReaction = typeof channelReactions.$inferSelect;
+export type ChannelComment = typeof channelComments.$inferSelect;
+export type ChannelShare = typeof channelShares.$inferSelect;
+export type Membership = typeof memberships.$inferSelect;

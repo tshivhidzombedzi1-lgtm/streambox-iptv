@@ -4,7 +4,9 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import NotFound from "./pages/NotFound";
-import { BrowseScreen, ChannelDetail, documentaryChannels, FavoritesScreen, musicChannels, newsChannels, PlaceholderScreen, ProfileSelector, StreamingHome, WatchScreen } from "./pages/StreamingScreens";
+import { BrowseScreen, ChannelDetail, FavoritesScreen, PlaceholderScreen, ProfileSelector, StreamingHome } from "./pages/StreamingScreens";
+import ShareAnalyticsScreen from "./pages/ShareAnalytics";
+import WatchPage, { PricingScreen } from "./pages/WatchPage";
 
 function Router() {
   return <Switch>
@@ -14,8 +16,8 @@ function Router() {
     <Route path="/live" component={() => <BrowseScreen title="Live TV" kicker="Now playing around the world" />} />
     <Route path="/channels" component={() => <BrowseScreen title="Channel directory" kicker="Search every connected live source" />} />
     <Route path="/channels/:channelId" component={ChannelDetail} />
-    <Route path="/watch/:contentId" component={WatchScreen} />
-    <Route path="/news" component={() => <BrowseScreen title="World news" kicker="Live headlines and rolling coverage" channels={newsChannels} />} />
+    <Route path="/watch/:contentId" component={WatchPage} />
+    <Route path="/news" component={() => <BrowseScreen title="World news" kicker="Live headlines and rolling coverage" />} />
     <Route path="/sports" component={() => <BrowseScreen title="Sports" kicker="Live sports channels" />} />
     <Route path="/movies" component={() => <PlaceholderScreen title="Movies" kicker="Cinema on demand" />} />
     <Route path="/movies/:movieId" component={() => <PlaceholderScreen title="Movie details" kicker="Now viewing" />} />
@@ -26,6 +28,8 @@ function Router() {
     <Route path="/guide" component={() => <PlaceholderScreen title="TV Guide" kicker="Now, next, and tonight" />} />
     <Route path="/profile" component={() => <PlaceholderScreen title="Profile" kicker="Your viewing identity" />} />
     <Route path="/settings" component={() => <PlaceholderScreen title="Settings" kicker="Playback and account preferences" />} />
+    <Route path="/pricing" component={PricingScreen} />
+    <Route path="/admin/shares" component={ShareAnalyticsScreen} />
     <Route path="/404" component={NotFound} />
     <Route component={NotFound} />
   </Switch>;

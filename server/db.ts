@@ -1,6 +1,6 @@
-import { and, desc, eq, gt } from "drizzle-orm";
+import { and, count, desc, eq, gt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, roomMembers, roomMessages, roomPlayback, roomSignals, rooms, users } from "../drizzle/schema";
+import { channelComments, channelReactions, channelShares, InsertUser, memberships, roomMembers, roomMessages, roomPlayback, roomSignals, rooms, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -99,4 +99,62 @@ export async function setRoomPlayback(roomId: number, userId: number, data: { ch
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   await db.insert(roomPlayback).values({ roomId, updatedBy: userId, ...data, isPlaying: data.isPlaying ? 1 : 0 }).onDuplicateKeyUpdate({ set: { ...data, isPlaying: data.isPlaying ? 1 : 0, updatedBy: userId, updatedAt: new Date() } });
   return (await db.select().from(roomPlayback).where(eq(roomPlayback.roomId, roomId)).limit(1))[0];
+}
+
+export async function getChannelEngagement(channelId: string, userId?: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const reactionCounts = await db.select({ reaction: channelReactions.reaction, total: count() }).from(channelReactions).where(eq(channelReactions.channelId, channelId)).groupBy(channelReactions.reaction);
+  const viewerReaction = userId ? (await db.select({ reaction: channelReactions.reaction }).from(channelReactions).where(and(eq(channelReactions.channelId, channelId), eq(channelReactions.userId, userId))).limit(1))[0]?.reaction ?? null : null;
+  const comments = await db.select({ id: channelComments.id, body: channelComments.body, createdAt: channelComments.createdAt, userId: channelComments.userId, name: users.name }).from(channelComments).leftJoin(users, eq(channelComments.userId, users.id)).where(eq(channelComments.channelId, channelId)).orderBy(desc(channelComments.createdAt)).limit(100);
+  const likes = reactionCounts.find((item) => item.reaction === "like")?.total ?? 0;
+  const dislikes = reactionCounts.find((item) => item.reaction === "dislike")?.total ?? 0;
+  return { likes, dislikes, viewerReaction, comments: comments.reverse() };
+}
+
+export async function setChannelReaction(channelId: string, userId: number, reaction: "like" | "dislike" | null) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  if (!reaction) await db.delete(channelReactions).where(and(eq(channelReactions.channelId, channelId), eq(channelReactions.userId, userId)));
+  else await db.insert(channelReactions).values({ channelId, userId, reaction }).onDuplicateKeyUpdate({ set: { reaction, updatedAt: new Date() } });
+  return getChannelEngagement(channelId, userId);
+}
+
+export async function addChannelComment(channelId: string, userId: number, body: string) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.insert(channelComments).values({ channelId, userId, body });
+  return getChannelEngagement(channelId, userId);
+}
+
+export async function recordChannelShare(data: { channelId: string; channelName: string; userId: number; recipient: string; method: "copy" | "email" | "whatsapp" | "direct" }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const result = await db.insert(channelShares).values(data);
+  return { id: Number(result[0].insertId) };
+}
+
+export async function listChannelShares(limit = 100) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.select({ id: channelShares.id, channelId: channelShares.channelId, channelName: channelShares.channelName, recipient: channelShares.recipient, method: channelShares.method, createdAt: channelShares.createdAt, userId: channelShares.userId, userName: users.name, userEmail: users.email }).from(channelShares).leftJoin(users, eq(channelShares.userId, users.id)).orderBy(desc(channelShares.createdAt)).limit(limit);
+}
+
+export async function getOrCreateMembership(userId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const existing = (await db.select().from(memberships).where(eq(memberships.userId, userId)).limit(1))[0];
+  if (existing) return existing;
+  const trialEndsAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
+  await db.insert(memberships).values({ userId, plan: "plus", status: "trial", trialEndsAt });
+  return (await db.select().from(memberships).where(eq(memberships.userId, userId)).limit(1))[0];
+}
+
+export async function getMembershipEntitlement(userId: number) {
+  const membership = await getOrCreateMembership(userId);
+  const now = Date.now();
+  const trialActive = membership.status === "trial" && membership.trialEndsAt > now;
+  const paidActive = membership.status === "active" && (!membership.currentPeriodEndsAt || membership.currentPeriodEndsAt > now);
+  const effectivePlan = trialActive || paidActive ? membership.plan : "free";
+  return {
+    membership,
+    effectivePlan,
+    trialActive,
+    trialDaysRemaining: trialActive ? Math.max(1, Math.ceil((membership.trialEndsAt - now) / 86400000)) : 0,
+    maxQuality: effectivePlan === "max" ? "4K" : effectivePlan === "plus" ? "Full HD" : "SD 360p",
+  } as const;
 }

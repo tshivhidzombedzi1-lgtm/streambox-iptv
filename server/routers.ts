@@ -1,12 +1,30 @@
 import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { addRoomMember, addRoomMessage, addRoomSignal, createWatchRoom, getRoomByCode, getRoomMember, getRoomSignals, getRoomSnapshot, setRoomMemberRole, setRoomPlayback } from "./db";
+import {
+  addChannelComment,
+  addRoomMember,
+  addRoomMessage,
+  addRoomSignal,
+  createWatchRoom,
+  getChannelEngagement,
+  getMembershipEntitlement,
+  getRoomByCode,
+  getRoomMember,
+  getRoomSignals,
+  getRoomSnapshot,
+  listChannelShares,
+  recordChannelShare,
+  setChannelReaction,
+  setRoomMemberRole,
+  setRoomPlayback,
+} from "./db";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 
 const roomCode = z.string().trim().min(4).max(12).transform((code) => code.toUpperCase());
+const channelId = z.string().trim().min(1).max(128);
 
 async function requireRoomMember(code: string, userId: number) {
   const room = await getRoomByCode(code);
@@ -27,7 +45,7 @@ export const appRouter = router({
     }),
   }),
   watchRooms: router({
-    create: protectedProcedure.input(z.object({ name: z.string().trim().min(2).max(120).default("NOVA watch party") })).mutation(async ({ ctx, input }) => {
+    create: protectedProcedure.input(z.object({ name: z.string().trim().min(2).max(120).default("WONDERBOX watch party") })).mutation(async ({ ctx, input }) => {
       const room = await createWatchRoom(ctx.user.id, input.name);
       return { room, snapshot: await getRoomSnapshot(room.id) };
     }),
@@ -68,6 +86,23 @@ export const appRouter = router({
       await setRoomMemberRole(room.id, input.userId, input.role);
       return getRoomSnapshot(room.id);
     }),
+  }),
+  engagement: router({
+    get: publicProcedure.input(z.object({ channelId })).query(({ ctx, input }) => getChannelEngagement(input.channelId, ctx.user?.id)),
+    react: protectedProcedure.input(z.object({ channelId, reaction: z.enum(["like", "dislike"]).nullable() })).mutation(({ ctx, input }) => setChannelReaction(input.channelId, ctx.user.id, input.reaction)),
+    comment: protectedProcedure.input(z.object({ channelId, body: z.string().trim().min(1).max(1000) })).mutation(({ ctx, input }) => addChannelComment(input.channelId, ctx.user.id, input.body)),
+    share: protectedProcedure.input(z.object({ channelId, channelName: z.string().trim().min(1).max(240), recipient: z.string().trim().min(1).max(180), method: z.enum(["copy", "email", "whatsapp", "direct"]) })).mutation(({ ctx, input }) => recordChannelShare({ ...input, userId: ctx.user.id })),
+  }),
+  membership: router({
+    current: publicProcedure.query(async ({ ctx }) => ctx.user ? getMembershipEntitlement(ctx.user.id) : ({ membership: null, effectivePlan: "free", trialActive: false, trialDaysRemaining: 0, maxQuality: "SD 360p" } as const)),
+    plans: publicProcedure.query(() => [
+      { id: "free", name: "Free", monthlyUsd: 0, quality: "SD 360p", devices: 1, trialDays: 0 },
+      { id: "plus", name: "Plus", monthlyUsd: 8.99, quality: "Full HD 1080p", devices: 2, trialDays: 30 },
+      { id: "max", name: "Max", monthlyUsd: 14.99, quality: "4K where available", devices: 4, trialDays: 30 },
+    ]),
+  }),
+  analytics: router({
+    shares: adminProcedure.input(z.object({ limit: z.number().int().min(1).max(250).default(100) })).query(({ input }) => listChannelShares(input.limit)),
   }),
 });
 

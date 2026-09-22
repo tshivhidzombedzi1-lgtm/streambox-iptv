@@ -24,5 +24,7 @@ describe("worldwide free channel catalog", () => {
       url: "https://example.com/sabc.m3u8",
       isLive: true,
     });
+    expect(result[0].id).toMatch(/^iptv-\d+-sabc-1$/);
+    expect(result[0].id).not.toContain("https://");
   });
 });
