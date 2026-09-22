@@ -151,3 +151,79 @@ footer a, footer button { color:rgba(13,27,42,.54); } footer a:hover, footer but
 @media (max-width:640px) { .watch-room-trigger { right:14px; bottom:78px; } .watch-room-drawer { width:100vw; } .host-dock { align-items:flex-start; flex-direction:column; } .host-actions { width:100%; } .host-actions button { flex:1; justify-content:center; } }
 
 .vc-remotes { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-top:9px; } .vc-remotes video { width:100%; height:92px; object-fit:cover; transform:scaleX(-1); border:1px solid rgba(255,255,255,.12); border-radius:12px; background:#0b1622; }
+
+/* Cinematic streaming skin inspired by contemporary premium OTT interfaces */
+:root { --background:#141414; --foreground:#f5f5f5; --card:#1f1f1f; --card-foreground:#f5f5f5; --popover:#181818; --popover-foreground:#f5f5f5; --primary:#e50914; --primary-foreground:#fff; --border:rgba(255,255,255,.12); --input:rgba(255,255,255,.16); --ring:#e50914; }
+html { background:#141414; }
+body { background:#141414; color:#f5f5f5; background-image:radial-gradient(circle at 50% -10%, rgba(104,25,28,.18), transparent 34%), linear-gradient(180deg,#141414 0%,#141414 72%,#0b0b0b 100%); }
+main.min-h-screen { background:#141414!important; color:#f5f5f5!important; }
+main.min-h-screen > nav { position:sticky; top:0; border-bottom:1px solid rgba(255,255,255,.02)!important; background:linear-gradient(180deg,rgba(0,0,0,.92) 0%,rgba(0,0,0,.72) 62%,transparent 100%)!important; backdrop-filter:none!important; }
+main.min-h-screen > nav > div { max-width:1540px; padding-top:16px!important; padding-bottom:18px!important; }
+.brand-mark { background:#e50914!important; border-radius:4px!important; box-shadow:0 6px 18px rgba(229,9,20,.25)!important; }
+main.min-h-screen nav .font-display { letter-spacing:-.04em; }
+main.min-h-screen nav .font-display .text-\[\#536a86\] { color:#fff!important; }
+.nav-link { color:rgba(255,255,255,.72)!important; font-size:13px; }
+.nav-link:hover,.nav-link.active { color:#fff!important; }
+main.min-h-screen nav input { border-color:rgba(255,255,255,.24)!important; border-radius:4px!important; background:rgba(0,0,0,.55)!important; color:#fff!important; }
+.icon-button { width:34px; height:34px; border:0!important; border-radius:4px!important; background:transparent!important; color:rgba(255,255,255,.8)!important; box-shadow:none!important; }
+.icon-button:hover { color:#fff!important; background:rgba(255,255,255,.1)!important; }
+.avatar { width:32px; height:32px; border-radius:3px; background:#e50914!important; color:#fff!important; }
+.ambient { display:none; }
+#top { max-width:1540px!important; padding:0 0 70px!important; }
+.hero-grid { display:block!important; margin-bottom:32px!important; }
+.hero-grid > div:first-child { min-height:610px; display:flex; align-items:flex-end; padding:0 7vw 86px!important; border:0!important; border-radius:0!important; background:#141414!important; }
+.hero-grid > div:first-child:after { content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(90deg,rgba(20,20,20,.98) 0%,rgba(20,20,20,.72) 32%,rgba(20,20,20,.18) 75%,rgba(20,20,20,.2) 100%),linear-gradient(0deg,#141414 0%,transparent 28%,rgba(0,0,0,.06) 100%); z-index:1; }
+.hero-backdrop { opacity:.86!important; mix-blend-mode:normal!important; filter:saturate(.85) contrast(1.08); transform:scale(1.02); }
+.hero-scanlines { display:none; }
+.hero-grid > div:first-child > .relative { z-index:2; max-width:620px!important; }
+.hero-grid .mb-6 { margin-bottom:18px!important; color:#e50914!important; font-size:11px!important; letter-spacing:.18em!important; }
+.hero-grid h1 { font-size:clamp(48px,7vw,92px)!important; line-height:.92!important; letter-spacing:-.07em!important; text-shadow:0 2px 14px rgba(0,0,0,.35); }
+.hero-grid h1 span { color:#fff!important; }
+.hero-grid p.mt-6 { max-width:520px!important; color:rgba(255,255,255,.78)!important; font-size:15px!important; line-height:1.55!important; text-shadow:0 2px 10px rgba(0,0,0,.4); }
+.primary-button { min-height:42px; color:#000!important; border-radius:4px!important; background:#fff!important; box-shadow:none!important; }
+.primary-button:hover { background:#e6e6e6!important; transform:scale(1.03); }
+.secondary-button { min-height:42px; border:0!important; border-radius:4px!important; color:#fff!important; background:rgba(109,109,110,.72)!important; box-shadow:none!important; }
+.secondary-button:hover { background:rgba(109,109,110,.48)!important; transform:scale(1.03); }
+.hero-grid > .grid { display:flex!important; gap:10px!important; max-width:1540px; margin:-62px auto 0!important; padding:0 5vw!important; position:relative; z-index:3; }
+.stat-card { flex:1; min-height:84px!important; padding:16px 18px!important; border:1px solid rgba(255,255,255,.08)!important; border-radius:4px!important; background:rgba(31,31,31,.94)!important; box-shadow:0 16px 28px rgba(0,0,0,.28)!important; backdrop-filter:blur(14px); }
+.stat-card svg { margin-bottom:7px!important; color:#e50914!important; }
+.stat-card p.font-display { font-size:24px!important; }
+#player { max-width:1400px; margin-right:auto; margin-left:auto; padding:0 5vw; }
+.player-shell { border:0!important; border-radius:4px!important; background:#000!important; box-shadow:0 18px 50px rgba(0,0,0,.4)!important; }
+.player-shell + div { border:0!important; border-radius:4px!important; background:#181818!important; box-shadow:0 18px 50px rgba(0,0,0,.25)!important; }
+.control-chip { border:0!important; border-radius:4px!important; background:rgba(0,0,0,.62)!important; }
+.control-chip:hover { background:#e50914!important; }
+#player .eyebrow { color:rgba(255,255,255,.5)!important; }
+#player .detail-row { border-color:rgba(255,255,255,.09)!important; }
+#player button:not(.control-chip) { border-radius:4px!important; }
+#live-tv,#my-list,#channels { max-width:1400px; margin-right:auto; margin-left:auto; padding-right:5vw; padding-left:5vw; }
+.section-title { color:#fff!important; font-size:24px!important; letter-spacing:-.04em!important; }
+.eyebrow { color:rgba(255,255,255,.5)!important; letter-spacing:.12em!important; }
+.section-count { color:rgba(255,255,255,.48)!important; }
+.glass-channel-browser,.epg-strip { border:1px solid rgba(255,255,255,.1)!important; border-radius:4px!important; background:#181818!important; box-shadow:0 16px 40px rgba(0,0,0,.18)!important; backdrop-filter:none!important; }
+.channel-browser-head { border-color:rgba(255,255,255,.1)!important; color:rgba(255,255,255,.42)!important; }
+.channel-row { border-color:rgba(255,255,255,.07)!important; color:#fff!important; }
+.channel-row:hover,.channel-row:focus-visible,.channel-row.active { background:rgba(255,255,255,.09)!important; transform:none!important; }
+.row-channel small,.row-program small,.row-next { color:rgba(255,255,255,.45)!important; }
+.row-live { color:#fff!important; }
+.category-pill { height:32px!important; border:0!important; border-radius:4px!important; color:rgba(255,255,255,.68)!important; background:#2b2b2b!important; }
+.category-pill:hover { color:#fff!important; background:#3a3a3a!important; }
+.category-pill.selected { color:#fff!important; background:#e50914!important; }
+.epg-strip { background:#181818!important; }
+.channel-card { transition:transform .2s ease; }
+.channel-card:hover { z-index:3; transform:scale(1.04); }
+.channel-art { height:170px!important; border:0!important; border-radius:4px!important; box-shadow:none!important; }
+.channel-card:hover .channel-art { transform:none!important; border:0!important; box-shadow:0 10px 25px rgba(0,0,0,.45)!important; }
+.channel-card.is-active .channel-art { border:2px solid #e50914!important; box-shadow:none!important; }
+.channel-card .font-display { color:#fff!important; }
+.channel-card .text-white\/40 { color:rgba(255,255,255,.48)!important; }
+.empty-shelf { border-color:rgba(255,255,255,.18)!important; border-radius:4px!important; }
+.empty-shelf p { color:#fff!important; }
+footer { border-color:rgba(255,255,255,.1)!important; color:rgba(255,255,255,.4)!important; }
+footer a,footer button { color:rgba(255,255,255,.52)!important; }
+.watch-room-trigger { right:280px!important; bottom:22px!important; border:0!important; border-radius:4px!important; background:#e50914!important; box-shadow:0 8px 22px rgba(0,0,0,.35)!important; }
+.watch-room-trigger:hover { background:#f6121d!important; }
+.remote-panel { border:1px solid rgba(255,255,255,.12)!important; border-radius:4px!important; background:rgba(24,24,24,.96)!important; }
+.remote-ok { border-radius:4px!important; background:#e50914!important; border-color:#e50914!important; }
+@media (max-width:900px) { .hero-grid > div:first-child { min-height:530px; padding:0 7vw 80px!important; } .hero-grid > .grid { display:grid!important; grid-template-columns:repeat(2,1fr); margin-top:-40px!important; } #player,#live-tv,#my-list,#channels { padding-right:20px; padding-left:20px; } }
+@media (max-width:640px) { .hero-grid > div:first-child { min-height:520px; padding:0 24px 70px!important; } .hero-grid > .grid { grid-template-columns:repeat(2,1fr); padding:0 20px!important; } .stat-card { min-height:76px!important; } .stat-card p.font-display { font-size:20px!important; } .watch-room-trigger { right:14px!important; bottom:78px!important; } }
