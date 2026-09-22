@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Check, CircleHelp, ExternalLink,
   Film, Flag, Gamepad2, Heart, LayoutGrid, ListFilter, Maximize2, Menu, Pause,
-  Play, Plus, Radio, Search, Tv, Volume2, X, Zap,
+  Play, Plus, Radio, Search, Tv, Users, Volume2, X, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import WatchRoomPanel from "@/components/WatchRoomPanel";
 
 type Channel = { id: string; name: string; group: string; country: string; url: string; logo?: string; language?: string; isLive?: boolean };
 
@@ -74,9 +75,15 @@ function Player({ channel, muted, onMute }: { channel: Channel; muted: boolean; 
       if (event.key.toLowerCase() === "f") ref.current?.requestFullscreen?.();
     };
     const remoteHandler = () => toggle();
+    const roomPlaybackHandler = (event: Event) => {
+      const detail = (event as CustomEvent<{ isPlaying?: boolean }>).detail;
+      if (detail?.isPlaying) ref.current?.play().then(() => setPlaying(true)).catch(() => undefined);
+      else { ref.current?.pause(); setPlaying(false); }
+    };
     window.addEventListener("keydown", handler);
     window.addEventListener("streambox:toggle", remoteHandler);
-    return () => { window.removeEventListener("keydown", handler); window.removeEventListener("streambox:toggle", remoteHandler); };
+    window.addEventListener("nova:room-playback", roomPlaybackHandler);
+    return () => { window.removeEventListener("keydown", handler); window.removeEventListener("streambox:toggle", remoteHandler); window.removeEventListener("nova:room-playback", roomPlaybackHandler); };
   });
   function toggle() {
     if (!ref.current) return;
@@ -133,12 +140,14 @@ export default function Home() {
   const [playlistUrl, setPlaylistUrl] = useState(PLAYLISTS.country);
   const [loading, setLoading] = useState(true);
   const [source, setSource] = useState("IPTV-Org public catalog");
+  const [roomOpen, setRoomOpen] = useState(false);
 
   useEffect(() => { fetch(PLAYLISTS.all).then((r) => r.ok ? r.text() : Promise.reject()).then((raw) => { const parsed = parseM3U(raw); if (parsed.length) { setChannels(parsed); setActive(parsed[0]); setSource("IPTV-Org master index"); } }).catch(() => toast("Using starter channels while the public index reconnects", { icon: <Radio size={15} /> })).finally(() => setLoading(false)); }, []);
   const visible = useMemo(() => { const q = query.toLowerCase().trim(); return channels.filter((c) => (group === "All channels" || c.group.toLowerCase().includes(group.toLowerCase())) && (!q || [c.name, c.group, c.country, c.language].filter(Boolean).join(" ").toLowerCase().includes(q))).slice(0, 120); }, [channels, group, query]);
   const saved = channels.filter((c) => favorites.includes(c.id));
   const toggleFavorite = (channel: Channel) => { const exists = favorites.includes(channel.id); setFavorites((current) => exists ? current.filter((id) => id !== channel.id) : [...current, channel.id]); toast(exists ? "Removed from My List" : "Added to My List", { icon: <Heart size={15} /> }); };
   const select = (channel: Channel) => { setActive(channel); document.getElementById("player")?.scrollIntoView({ behavior: "smooth" }); };
+  const applyRoomPlayback = (playback: { channelId: string; isPlaying: number } | null) => { if (!playback) return; const next = channels.find((channel) => channel.id === playback.channelId); if (next) setActive(next); window.dispatchEvent(new CustomEvent("nova:room-playback", { detail: { isPlaying: Boolean(playback.isPlaying) } })); };
   const loadPlaylist = () => { setLoading(true); fetch(playlistUrl.trim()).then((r) => r.ok ? r.text() : Promise.reject()).then((raw) => { const parsed = parseM3U(raw); if (!parsed.length) throw new Error(); setChannels(parsed); setActive(parsed[0]); setSource("Custom M3U playlist"); setPlaylistOpen(false); toast.success(`${parsed.length.toLocaleString()} channels loaded`); }).catch(() => toast.error("Could not load that playlist. Check the URL and CORS access.")).finally(() => setLoading(false)); };
   const move = (direction: string) => { const index = visible.findIndex((c) => c.id === active.id); const next = direction === "left" || direction === "up" ? Math.max(0, index - 1) : Math.min(visible.length - 1, index + 1); if (visible[next]) setActive(visible[next]); };
 
@@ -150,6 +159,8 @@ export default function Home() {
     <section id="channels"><div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><p className="eyebrow">Open signal directory</p><div className="flex items-center gap-3"><h2 className="section-title">Live channels</h2><span className="source-badge"><Check size={12} /> {source}</span></div></div><div className="flex items-center gap-2"><button onClick={() => setPlaylistOpen(true)} className="secondary-button compact"><ListFilter size={14} /> Playlist tools</button><div className="relative sm:hidden"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35" size={14} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search" className="h-9 w-[130px] rounded-xl border border-white/10 bg-white/[0.04] pl-8 pr-3 text-xs text-white outline-none" /></div></div></div><div className="scrollbar-none mb-7 flex gap-2 overflow-x-auto pb-1">{groups.map((item) => <button key={item} onClick={() => setGroup(item)} className={`category-pill ${group === item ? "selected" : ""}`}>{item === "All channels" && <LayoutGrid size={14} />}{item}</button>)}</div>{visible.length ? <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{visible.map((channel) => <ChannelCard key={channel.id} channel={channel} active={active.id === channel.id} favorite={favorites.includes(channel.id)} select={() => select(channel)} toggleFavorite={() => toggleFavorite(channel)} />)}</div> : <div className="empty-shelf"><Search size={21} /><p>No channels found</p><span>Try another search or category.</span></div>}</section>
     <footer className="mt-20 flex flex-col gap-4 border-t border-white/8 pt-6 text-xs text-white/30 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2"><span className="brand-mark small"><Tv size={13} /></span><span>StreamBox IPTV</span><span className="mx-1">·</span><span>Built for public streams</span></div><div className="flex gap-5"><a href="https://www.iptv.tools" target="_blank" rel="noreferrer" className="transition hover:text-white">IPTV.tools <ExternalLink size={11} className="ml-1 inline" /></a><a href="https://github.com/iptv-org/iptv/blob/master/PLAYLISTS.md" target="_blank" rel="noreferrer" className="transition hover:text-white">Playlist docs <ExternalLink size={11} className="ml-1 inline" /></a><button onClick={() => toast("Use Playlist tools to connect another public M3U source", { icon: <CircleHelp size={15} /> })} className="transition hover:text-white">Help</button></div></footer></div>
     {playlistOpen && <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-5 backdrop-blur-sm"><div className="w-full max-w-[560px] rounded-[26px] border border-white/10 bg-[#17181e] p-6 shadow-2xl"><div className="mb-6 flex items-start justify-between"><div><p className="eyebrow">Connect a source</p><h2 className="mt-1 font-display text-2xl font-bold text-white">Playlist tools</h2><p className="mt-2 text-sm leading-6 text-white/45">Load a public M3U playlist. The IPTV-Org indexes are ready to use, or paste your own URL.</p></div><button onClick={() => setPlaylistOpen(false)} className="text-white/40 hover:text-white"><X size={18} /></button></div><label className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-white/45">M3U playlist URL</label><div className="flex gap-2"><input value={playlistUrl} onChange={(event) => setPlaylistUrl(event.target.value)} className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-sm text-white outline-none focus:border-[#fb765f]/60" /><button onClick={loadPlaylist} className="primary-button shrink-0 px-4">{loading ? "Loading" : "Load"}</button></div><div className="mt-5 grid grid-cols-2 gap-2">{[["All channels", PLAYLISTS.all, Radio], ["By country", PLAYLISTS.country, Flag], ["By category", PLAYLISTS.category, Film], ["By language", PLAYLISTS.language, Menu]].map(([label, url, Icon]) => <button key={label as string} onClick={() => setPlaylistUrl(url as string)} className="source-option"><Icon size={14} /> {label as string}</button>)}</div><div className="mt-6 rounded-xl border border-[#fb765f]/15 bg-[#fb765f]/[0.05] p-3 text-xs leading-5 text-white/50"><strong className="text-[#ff9b8b]">Good to know:</strong> Stream availability depends on each public provider. A channel can be listed yet temporarily offline; use the catalog to switch signals instantly.</div></div></div>}
+    <WatchRoomPanel open={roomOpen} onClose={() => setRoomOpen(false)} activeChannel={{ id: active.id, name: active.name, url: active.url }} onRemotePlayback={applyRoomPlayback} />
+    {!roomOpen && <button onClick={() => setRoomOpen(true)} className="watch-room-trigger"><Users size={15} /> Watch together</button>}
     <Remote open={remoteOpen} toggle={() => setRemoteOpen((value) => !value)} move={move} playPause={() => window.dispatchEvent(new Event("streambox:toggle"))} volume={(direction) => { setMuted(direction === "down"); toast(direction === "down" ? "Muted" : "Audio on", { icon: <Volume2 size={14} /> }); }} />
   </main>;
 }
