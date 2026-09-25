@@ -246,6 +246,12 @@ function contextList(catalog: Catalog, from: string, current: Channel): Channel[
 }
 
 export function WatchScreen() {
+  // Once the AdSense script has loaded (browsing pages), its Auto ads such as the
+  // sticky anchor ad would stay on screen over the player. Reload the channel page
+  // fresh instead: the server leaves the ads script off player pages.
+  useEffect(() => {
+    if (document.querySelector('script[src*="adsbygoogle.js"]')) window.location.reload();
+  }, []);
   const { id = "" } = useParams<{ id: string }>();
   const from = new URLSearchParams(useSearch()).get("from") || "";
   const [, navigate] = useLocation();
