@@ -1,6 +1,6 @@
 // Paying viewers, through Stripe: YokoTV Premium (monthly or yearly
 // subscription, no ads) and once-off "Support YokoTV" tips, charged in rand.
-// Settings live in data/stripe.json (filled in by the site owner, never committed):
+// Settings live in data/stripe.json, written by the Connect Stripe box in /admin (never committed):
 //   { "enabled": false, "secretKey": "sk_…", "webhookSecret": "whsec_…",
 //     "prices": { "monthly": 29, "annual": 249 } }
 // Nothing is sold until "enabled" is true and both keys are set. With a test
@@ -190,6 +190,38 @@ export function registerPaymentRoutes(app: Express) {
     }
   });
 
+  // Admin: connect Stripe with just the secret key. The server checks the key,
+  // creates the webhook in the owner's Stripe account (replacing any older YokoTV
+  // one) and saves both secrets. Keys are never sent back to the browser.
+  app.post("/api/admin/payments/connect", async (req, res) => {
+    if (!(await isAdmin(req))) return void res.status(403).json({ error: "Admins only" });
+    const secretKey = String(req.body?.secretKey || "").trim();
+    if (!/^(sk|rk)_(test|live)_\w{10,}$/.test(secretKey)) return void res.status(400).json({ error: "That doesn't look like a Stripe secret key. It starts with sk_test_ or sk_live_." });
+    const c = { ...config(), secretKey };
+    try {
+      const acct = await stripe<{ id: string; country: string; default_currency: string; charges_enabled: boolean; business_profile?: { name?: string } }>(c, "GET", "/account");
+      const url = `${SITE}/api/pay/webhook`;
+      const existing = await stripe<{ data: { id: string; url: string }[] }>(c, "GET", "/webhook_endpoints?limit=100");
+      for (const w of existing.data.filter((x) => x.url === url)) await stripe(c, "DELETE", `/webhook_endpoints/${w.id}`);
+      const hook = await stripe<{ secret: string }>(c, "POST", "/webhook_endpoints", {
+        url, description: "YokoTV Premium and support payments", api_version: "2024-06-20",
+        enabled_events: { 0: "checkout.session.completed", 1: "invoice.paid", 2: "customer.subscription.updated", 3: "customer.subscription.deleted" },
+      });
+      fs.writeFileSync(CONFIG_FILE, JSON.stringify({ enabled: true, secretKey, webhookSecret: hook.secret, prices: c.prices }, null, 2) + "\n", { mode: 0o600 });
+      res.json({ ok: true, mode: testMode(c) ? "test" : "live", country: acct.country, currency: acct.default_currency, chargesEnabled: acct.charges_enabled, name: acct.business_profile?.name || "" });
+    } catch (e) {
+      console.error("[payments] connect failed", e);
+      res.status(400).json({ error: `Stripe said: ${(e as Error).message.replace(/^Stripe [^:]*: /, "")}` });
+    }
+  });
+
+  app.post("/api/admin/payments/disconnect", async (req, res) => {
+    if (!(await isAdmin(req))) return void res.status(403).json({ error: "Admins only" });
+    const raw = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify({ ...raw, enabled: false }, null, 2) + "\n", { mode: 0o600 });
+    res.json({ ok: true });
+  });
+
   // Admin: money in, subscribers, recent payments.
   app.get("/api/admin/payments", async (req, res) => {
     if (!(await isAdmin(req))) return void res.status(403).json({ error: "Admins only" });
@@ -198,6 +230,7 @@ export function registerPaymentRoutes(app: Express) {
     const c = config();
     res.set("Cache-Control", "no-store").json({
       status: !c.enabled ? "off" : !ready(c) ? "missing details" : testMode(c) ? "test mode" : "live",
+      key: c.secretKey ? `${c.secretKey.slice(0, 8)}…${c.secretKey.slice(-4)}` : "",
       subscribers: countPremium(),
       month: sum("SELECT SUM(amount) gross, COUNT(*) n FROM payments WHERE created_at >= ?", monthStart),
       all: sum("SELECT SUM(amount) gross, COUNT(*) n FROM payments"),
