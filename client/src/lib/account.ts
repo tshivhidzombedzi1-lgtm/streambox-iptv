@@ -6,7 +6,10 @@ import { track } from "./growth";
 import { toast } from "sonner";
 import { googleSignedOut, setGoogleHandler } from "./google";
 
-export type User = { id: number; email: string; name: string; createdAt: number; premium: boolean; premiumUntil: number | null; plan: string | null; renews: boolean };
+export type User = {
+  id: number; email: string; name: string; createdAt: number; signIn: "email" | "google" | "google+email";
+  premium: boolean; premiumUntil: number | null; plan: string | null; renews: boolean; billing: boolean;
+};
 type Synced = { myList?: string[]; recents?: string[]; settings?: Partial<Settings> };
 
 let state: { user: User | null; ready: boolean } = { user: null, ready: false };

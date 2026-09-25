@@ -71,11 +71,15 @@ for (const col of ["premium_until INTEGER", "plan TEXT", "sub_code TEXT", "strip
   try { db.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch {}
 }
 
-type UserRow = { id: number; email: string; name: string; pass: string; session_version: number; created_at: number; premium_until: number | null; plan: string | null; sub_code: string | null; stripe_customer: string | null };
-export const isPremium = (u: Pick<UserRow, "premium_until"> | null | undefined) => !!u?.premium_until && u.premium_until > Date.now();
+type UserRow = { id: number; email: string; name: string; pass: string; session_version: number; created_at: number; google_sub: string | null; premium_until: number | null; plan: string | null; sub_code: string | null; stripe_customer: string | null };
+// premium_until is the end of the paid period; a renewal can land a little
+// after it, so Premium stays on for a short grace period.
+const GRACE_MS = 2 * 86400_000;
+export const isPremium = (u: Pick<UserRow, "premium_until"> | null | undefined) => !!u?.premium_until && u.premium_until + GRACE_MS > Date.now();
 const publicUser = (u: UserRow) => ({
   id: u.id, email: u.email, name: u.name, createdAt: u.created_at,
-  premium: isPremium(u), premiumUntil: u.premium_until || null, plan: u.plan || null, renews: !!u.sub_code,
+  signIn: u.google_sub ? (u.pass === NO_PASSWORD ? "google" : "google+email") : "email",
+  premium: isPremium(u), premiumUntil: u.premium_until || null, plan: u.plan || null, renews: !!u.sub_code, billing: !!u.stripe_customer,
 });
 
 export const findUser = (id: number) => db.prepare("SELECT * FROM users WHERE id = ?").get(id) as UserRow | undefined;

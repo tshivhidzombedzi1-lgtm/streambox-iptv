@@ -9,6 +9,7 @@ import { settings, useStore } from "./lib/catalog";
 import { googleOneTap } from "./lib/google";
 import { trackView } from "./lib/growth";
 import AdminScreen from "./pages/Admin";
+import AccountScreen from "./pages/Account";
 import NotFound from "./pages/NotFound";
 import PrivacyScreen from "./pages/Privacy";
 import TermsScreen from "./pages/Terms";
@@ -52,6 +53,7 @@ export default function App() {
       <Route path="/about" component={AboutScreen} />
       <Route path="/advertise" component={AdvertiseScreen} />
       <Route path="/premium" component={PremiumScreen} />
+      <Route path="/account" component={AccountScreen} />
       <Route path="/admin" component={AdminScreen} />
       <Route component={NotFound} />
     </Switch>

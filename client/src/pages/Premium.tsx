@@ -1,10 +1,11 @@
-import { Check, Crown, Heart } from "lucide-react";
+import { Check, Crown, Heart, Lock, Minus, RotateCcw, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Link, useSearch } from "wouter";
 import { AccountSheet } from "@/components/Account";
+import { Shell } from "@/pages/Screens";
 import { account, refreshAccount } from "@/lib/account";
-import { useStore } from "@/lib/catalog";
+import { useCatalog, useStore } from "@/lib/catalog";
 
 type PayConfig = { open: boolean; testMode: boolean; prices: { monthly: number; annual: number }; tips: number[] };
 const rand = (n: number) => `R${n.toLocaleString("en-ZA")}`;
@@ -17,14 +18,33 @@ async function startCheckout(body: object) {
   window.location.href = j.url; // Stripe's secure checkout page
 }
 
+// Free vs Premium, in both columns: [feature, free, premium].
+const COMPARE: [string, boolean, boolean][] = [
+  ["Every live channel, free", true, true],
+  ["TV guide and My List", true, true],
+  ["Sync across your devices", true, true],
+  ["No ads anywhere on YokoTV", false, true],
+  ["Premium badge on your account", false, true],
+  ["Keeps YokoTV free for everyone", false, true],
+];
+
+const FAQ: [string, React.ReactNode][] = [
+  ["How do I pay?", "By card on Stripe's secure checkout, in rand. YokoTV never sees or stores your card details."],
+  ["Can I cancel any time?", <>Yes, from <Link href="/account">your account</Link>. You won't be charged again, and Premium lasts until the end of the period you've paid for.</>],
+  ["What if I change my mind?", <>Cancel within 7 days of your first payment for a full refund: email <a href="mailto:support@yokotv.online">support@yokotv.online</a>.</>],
+  ["Does Premium add channels?", "No. Every channel is free for everyone; channels belong to their broadcasters and can change. Premium is about YokoTV itself: no ads, and supporting the service."],
+  ["Does it work on my TV?", "Yes. Sign in with the same account on your phone, computer and smart TV, and ads are gone on all of them."],
+];
+
 // YokoTV Premium (no ads) and once-off support payments, both through Stripe.
 export default function PremiumScreen() {
   const { user } = useStore(account);
+  const { catalog } = useCatalog();
   const params = new URLSearchParams(useSearch());
   const [cfg, setCfg] = useState<PayConfig | null>(null);
   const [plan, setPlan] = useState<"monthly" | "annual">("annual");
   const [tip, setTip] = useState(50);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState("");
   const [signin, setSignin] = useState(false);
   const [waiting, setWaiting] = useState(params.get("paid") === "premium");
 
@@ -44,57 +64,79 @@ export default function PremiumScreen() {
     return () => window.clearInterval(t);
   }, [waiting]);
 
-  const go = async (body: object) => {
-    setBusy(true);
-    try { await startCheckout(body); } catch (e) { toast((e as Error).message); setBusy(false); }
+  const go = async (key: string, body: object) => {
+    setBusy(key);
+    try { await startCheckout(body); } catch (e) { toast((e as Error).message); setBusy(""); }
   };
-  const buyPremium = () => (user ? go({ kind: "premium", plan }) : setSignin(true));
+  const buyPremium = () => (user ? go("premium", { kind: "premium", plan }) : setSignin(true));
   const prices = cfg?.prices || { monthly: 29, annual: 249 };
   const saving = Math.round(100 - (prices.annual / (prices.monthly * 12)) * 100);
+  const open = !!cfg?.open;
 
-  return <div className="app"><article className="legal premium">
-    <Link href="/" className="legal-back">← Back to YokoTV</Link>
-    <p className="premium-kicker"><Crown size={18} /> YokoTV Premium</p>
-    <h1>Watch without ads</h1>
-    <p className="premium-lead">Everything on YokoTV stays free. Premium removes every ad and supports the service, for less than a coffee a month.</p>
+  return <Shell catalog={catalog}><div className="pricing">
+    <header className="pricing-hero">
+      <p className="pricing-kicker"><Crown size={16} /> YokoTV Premium</p>
+      <h1>Live TV, without the ads</h1>
+      <p>Everything on YokoTV stays free. Premium removes every ad and keeps the service running, for less than a coffee a month.</p>
+    </header>
 
-    {user?.premium ? <div className="premium-card on">
-      <h2><Crown size={20} /> You're a Premium member</h2>
-      <p>{user.renews ? `Your ${user.plan === "annual" ? "yearly" : "monthly"} plan renews automatically. ` : `Premium runs until ${date(user.premiumUntil!)} and won't renew. `}
-        Manage it from your account (the person icon at the top).</p>
-    </div> : waiting ? <div className="premium-card"><div className="loader" /><p>Confirming your payment with Stripe…</p></div>
+    {user?.premium ? <section className="glass pricing-member">
+      <Crown size={28} />
+      <div><h2>You're a Premium member</h2>
+        <p>{user.renews ? `Your ${user.plan === "annual" ? "yearly" : "monthly"} plan renews on ${user.premiumUntil ? date(user.premiumUntil) : "schedule"}.` : `Premium runs until ${user.premiumUntil ? date(user.premiumUntil) : "the end of your period"} and won't renew.`}</p></div>
+      <Link href="/account" className="btn btn-light">Manage membership</Link>
+    </section> : waiting ? <section className="glass pricing-member"><div className="loader" /><div><h2>Confirming your payment</h2><p>Stripe usually confirms within a few seconds. You can stay on this page.</p></div></section>
     : <>
-      <div className="premium-plans" role="radiogroup" aria-label="Choose a plan">
-        {(["annual", "monthly"] as const).map((p) => <button key={p} role="radio" aria-checked={plan === p} className={`premium-plan ${plan === p ? "on" : ""}`} onClick={() => setPlan(p)}>
-          <span className="premium-plan-name">{p === "annual" ? "Yearly" : "Monthly"}{p === "annual" && saving > 0 && <em>Save {saving}%</em>}</span>
-          <strong>{rand(prices[p])}</strong><span>{p === "annual" ? `per year, about ${rand(Math.round(prices.annual / 12))} a month` : "per month"}</span>
+      <div className="segmented" role="radiogroup" aria-label="Billing period">
+        {(["monthly", "annual"] as const).map((p) => <button key={p} role="radio" aria-checked={plan === p} className={plan === p ? "on" : ""} onClick={() => setPlan(p)}>
+          {p === "annual" ? "Yearly" : "Monthly"}{p === "annual" && saving > 0 && <em>−{saving}%</em>}
         </button>)}
       </div>
-      <ul className="premium-perks">
-        <li><Check size={18} /> No ads anywhere on YokoTV, on every device you sign in on</li>
-        <li><Check size={18} /> A Premium badge on your account</li>
-        <li><Check size={18} /> Cancel any time; Premium keeps running to the end of what you've paid</li>
-        <li><Check size={18} /> You keep YokoTV free for everyone else</li>
-      </ul>
-      {cfg?.open ? <button className="btn btn-light btn-lg btn-block" disabled={busy} onClick={buyPremium}>{busy ? "Opening secure checkout…" : user ? `Get Premium for ${rand(prices[plan])}` : "Sign in to get Premium"}</button>
-        : <p className="premium-soon">Premium opens soon. Keep an eye on this page.</p>}
-      {cfg?.open && cfg.testMode && <p className="acct-error">Test mode: only admins see this, and no real money is charged.</p>}
+
+      <div className="pricing-cards">
+        <section className="glass price-card">
+          <h2>Free</h2>
+          <p className="price"><strong>R0</strong><span>forever</span></p>
+          <p className="price-sub">Every channel, supported by ads.</p>
+          <ul>{COMPARE.map(([f, free]) => <li key={f} className={free ? "" : "off"}>{free ? <Check size={17} /> : <Minus size={17} />}{f}</li>)}</ul>
+          <Link href="/" className="btn btn-ghost btn-block">Keep watching free</Link>
+        </section>
+
+        <section className="glass price-card featured">
+          <span className="price-flag">{plan === "annual" ? "Best value" : "Most flexible"}</span>
+          <h2><Crown size={18} /> Premium</h2>
+          <p className="price"><strong>{rand(plan === "annual" ? prices.annual : prices.monthly)}</strong><span>/ {plan === "annual" ? "year" : "month"}</span></p>
+          <p className="price-sub">{plan === "annual" ? `About ${rand(Math.round(prices.annual / 12))} a month, billed yearly.` : "Billed monthly. Cancel any time."}</p>
+          <ul>{COMPARE.map(([f, , prem]) => <li key={f}>{prem ? <Check size={17} /> : <Minus size={17} />}{f}</li>)}</ul>
+          {open ? <button className="btn btn-premium btn-block" disabled={!!busy} onClick={buyPremium}>{busy === "premium" ? "Opening secure checkout…" : user ? "Get Premium" : "Sign in to get Premium"}</button>
+            : <p className="price-soon">Premium opens soon.</p>}
+          {open && cfg?.testMode && <p className="price-test">Test mode: only admins see this, and no real money is charged.</p>}
+        </section>
+      </div>
     </>}
 
-    <h2><Heart size={20} className="inline-icon" /> Support YokoTV</h2>
-    <p>Not after a subscription? Say thanks with a once-off amount. It helps keep YokoTV free.</p>
-    <div className="premium-tips" role="radiogroup" aria-label="Amount">
-      {(cfg?.tips || [20, 50, 100]).map((n) => <button key={n} role="radio" aria-checked={tip === n} className={`chip ${tip === n ? "on" : ""}`} onClick={() => setTip(n)}>{rand(n)}</button>)}
-    </div>
-    {cfg?.open ? <button className="btn btn-ghost" disabled={busy} onClick={() => go({ kind: "tip", amount: tip })}><Heart size={16} /> Give {rand(tip)}</button>
-      : <p className="premium-soon">Support payments open soon.</p>}
+    <ul className="trust">
+      <li><Lock size={16} /> Secure checkout by Stripe</li>
+      <li><RotateCcw size={16} /> Cancel any time</li>
+      <li><ShieldCheck size={16} /> 7-day refund on your first payment</li>
+    </ul>
 
-    <h2>Questions</h2>
-    <p><b>How do I pay?</b> By card on Stripe's secure checkout, in rand. YokoTV never sees or stores your card details.</p>
-    <p><b>Can I cancel?</b> Any time, from your account. You won't be charged again, and Premium lasts until the end of the period you've paid for.</p>
-    <p><b>Changed your mind?</b> Cancel within 7 days of your first payment for a full refund: email <a href="mailto:support@yokotv.online">support@yokotv.online</a>.</p>
-    <p><b>Does Premium add channels?</b> No. Every channel is free for everyone; channels belong to their broadcasters and can change. Premium is about YokoTV itself: no ads, and supporting the service.</p>
-    <p className="legal-date">See the <Link href="/terms">Terms of Service</Link> (section 7, Paid services) and the <Link href="/privacy">privacy policy</Link>.</p>
+    <section className="glass pricing-support">
+      <div><h2><Heart size={18} /> Support YokoTV</h2><p>Not after a subscription? Say thanks with a once-off amount. It helps keep YokoTV free.</p></div>
+      <div className="pricing-support-pay">
+        <div className="segmented small" role="radiogroup" aria-label="Amount">
+          {(cfg?.tips || [20, 50, 100]).map((n) => <button key={n} role="radio" aria-checked={tip === n} className={tip === n ? "on" : ""} onClick={() => setTip(n)}>{rand(n)}</button>)}
+        </div>
+        {open ? <button className="btn btn-light" disabled={!!busy} onClick={() => go("tip", { kind: "tip", amount: tip })}>{busy === "tip" ? "Opening…" : `Give ${rand(tip)}`}</button>
+          : <span className="price-soon">Opens soon</span>}
+      </div>
+    </section>
+
+    <section className="pricing-faq">
+      <h2>Questions</h2>
+      {FAQ.map(([q, a]) => <details key={q} className="glass faq"><summary>{q}</summary><p>{a}</p></details>)}
+      <p className="pricing-legal">Payments are covered by the <Link href="/terms">Terms of Service</Link> (section 7, Paid services) and the <Link href="/privacy">privacy policy</Link>. Questions: <a href="mailto:support@yokotv.online">support@yokotv.online</a>.</p>
+    </section>
     {signin && <AccountSheet initial="signup" onClose={() => setSignin(false)} />}
-  </article></div>;
+  </div></Shell>;
 }

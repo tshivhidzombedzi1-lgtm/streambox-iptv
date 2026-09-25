@@ -20,7 +20,6 @@ const API = "https://api.stripe.com/v1";
 const DATA_DIR = path.resolve(process.cwd(), "data");
 const CONFIG_FILE = path.join(DATA_DIR, "stripe.json");
 const TIPS = [20, 50, 100];
-const GRACE_MS = 2 * 86400_000; // renewals can land a little after the period ends
 type Plan = "monthly" | "annual";
 
 type Config = { enabled: boolean; secretKey: string; webhookSecret: string; prices: Record<Plan, number> };
@@ -76,7 +75,7 @@ async function syncSubscription(c: Config, id: string) {
   if (!user) return;
   const plan = sub.metadata.plan === "annual" ? "annual" : "monthly";
   setStripeCustomer(user.id, sub.customer);
-  if (sub.status === "active" || sub.status === "trialing") setPremiumUntil(user.id, sub.current_period_end * 1000 + GRACE_MS, plan);
+  if (sub.status === "active" || sub.status === "trialing") setPremiumUntil(user.id, sub.current_period_end * 1000, plan);
   // Renewing only while active and not set to stop at the end of the period.
   setSubscription(user.id, (sub.status === "active" || sub.status === "trialing") && !sub.cancel_at_period_end ? sub.id : null);
   if (sub.status === "canceled") endSubscription(sub.id);
@@ -187,6 +186,28 @@ export function registerPaymentRoutes(app: Express) {
     } catch (e) {
       console.error("[payments] cancel failed", e);
       res.status(502).json({ error: "Stripe didn't respond. Try again in a few minutes, or email support@yokotv.online." });
+    }
+  });
+
+  // The signed-in member's own payments, for the Account page.
+  app.get("/api/pay/history", async (req, res) => {
+    const user = await currentUser(req);
+    if (!user) return void res.status(401).json({ error: "Signed out" });
+    res.set("Cache-Control", "no-store").json({
+      payments: db.prepare("SELECT id, kind, plan, amount, currency, created_at FROM payments WHERE user_id = ? ORDER BY created_at DESC LIMIT 50").all(user.id),
+    });
+  });
+
+  // Stripe's customer portal: update the card, download invoices, cancel.
+  app.post("/api/pay/portal", async (req, res) => {
+    const user = await currentUser(req);
+    if (!user?.stripe_customer) return void res.status(400).json({ error: "There's no billing account yet. It's created with your first payment." });
+    try {
+      const session = await stripe<{ url: string }>(config(), "POST", "/billing_portal/sessions", { customer: user.stripe_customer, return_url: `${SITE}/account` });
+      res.json({ url: session.url });
+    } catch (e) {
+      console.error("[payments] portal failed", e);
+      res.status(502).json({ error: "Billing management isn't available right now. You can still cancel here, or email support@yokotv.online." });
     }
   });
 

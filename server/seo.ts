@@ -149,7 +149,7 @@ function pageFor(req: Request): Page | { redirect: string } {
     description: "The terms for using YokoTV: how the free live TV guide works, fair use, copyright and takedown requests, advertising, and paid services.",
     heading: "Terms of Service", intro: "", links: [["/", "Watch live TV"], ["/privacy", "Privacy policy"]],
   };
-  if (p === "/search" || p === "/my-list" || p === "/favorites" || p === "/reset" || p === "/admin") return { ...fallback(p), status: 200, noindex: true };
+  if (p === "/search" || p === "/my-list" || p === "/favorites" || p === "/reset" || p === "/admin" || p === "/account") return { ...fallback(p), status: 200, noindex: true };
   return notFound(p);
 }
 

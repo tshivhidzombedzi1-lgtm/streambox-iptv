@@ -47,36 +47,42 @@ export default function AdminPayments() {
     load();
   };
 
-  if (!data) return null;
+  if (!data) return <div className="state small"><div className="loader" /></div>;
   const connected = data.status === "test mode" || data.status === "live";
-  return <section className="admin-card">
-    <h2>Payments</h2>
-    <p className={`admin-empty ${data.status === "live" ? "pay-live" : ""}`}>{STATUS[data.status] || data.status}{connected && data.key && <> Key in use: <code>{data.key}</code></>}</p>
-
-    <form className="acct-form stripe-connect" onSubmit={connect}>
-      <label><CreditCard size={15} className="inline-icon" /> {connected ? "Switch to another Stripe key (e.g. from test to live)" : "Connect Stripe: paste your secret key"}
-        <input type="password" autoComplete="off" spellCheck={false} placeholder="sk_test_… or sk_live_…" value={key} onChange={(e) => setKey(e.target.value)} required /></label>
-      <p className="admin-empty">Find it in Stripe under Developers → API keys → Secret key (click Reveal, then copy).{" "}
-        <a href="https://dashboard.stripe.com/test/apikeys" target="_blank" rel="noreferrer">Test keys <ExternalLink size={12} /></a>{" · "}
-        <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noreferrer">Live keys <ExternalLink size={12} /></a>.
-        YokoTV sets up the rest (including the webhook) automatically. The key is stored on the server and never shown again.</p>
-      <div className="sheet-actions">
-        <button className="btn btn-light" disabled={busy || !key.trim()}>{busy ? "Connecting…" : "Connect Stripe"}</button>
-        {data.status !== "off" && <button type="button" className="btn btn-ghost" onClick={disconnect}>Turn payments off</button>}
-      </div>
-    </form>
-
-    <div className="admin-tiles pay-tiles">
-      <div className="admin-tile"><span>This month</span><strong>{rand(data.month.gross)}</strong><small>{data.month.n} payments, before Stripe fees</small></div>
-      <div className="admin-tile"><span>All time</span><strong>{rand(data.all.gross)}</strong><small>{data.all.n} payments</small></div>
-      <div className="admin-tile"><span>Premium members</span><strong>{data.subscribers.toLocaleString("en-ZA")}</strong><small>with Premium right now</small></div>
+  const form = <form className="acct-form stripe-connect" onSubmit={connect}>
+    <label><CreditCard size={15} className="inline-icon" /> {connected ? "Switch to another Stripe key (e.g. from test to live)" : "Paste your Stripe secret key"}
+      <input type="password" autoComplete="off" spellCheck={false} placeholder="sk_live_… or rk_live_…" value={key} onChange={(e) => setKey(e.target.value)} required /></label>
+    <p className="admin-empty">Find it in Stripe under Developers → API keys.{" "}
+      <a href="https://dashboard.stripe.com/test/apikeys" target="_blank" rel="noreferrer">Test keys <ExternalLink size={12} /></a>{" · "}
+      <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noreferrer">Live keys <ExternalLink size={12} /></a>.
+      YokoTV sets up the webhook automatically. The key is stored on the server and never shown again.</p>
+    <div className="sheet-actions">
+      <button className="btn btn-light" disabled={busy || !key.trim()}>{busy ? "Connecting…" : "Connect Stripe"}</button>
+      {data.status !== "off" && <button type="button" className="btn btn-ghost" onClick={disconnect}>Turn payments off</button>}
     </div>
-    {data.recent.length > 0 && <table className="sponsor-table"><thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Email</th></tr></thead>
-      <tbody>{data.recent.map((p) => <tr key={p.id}>
-        <td>{new Date(p.created_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}</td>
-        <td>{p.kind === "tip" ? "Support" : `Premium (${p.plan === "annual" ? "yearly" : "monthly"})`}</td>
-        <td>{rand(p.amount)}{p.currency && p.currency !== "zar" ? ` ${p.currency.toUpperCase()}` : ""}</td>
-        <td>{p.email}</td>
-      </tr>)}</tbody></table>}
-  </section>;
+  </form>;
+  return <>
+    <div className="kpis">
+      <div className="glass kpi gold"><span>This month</span><strong>{rand(data.month.gross)}</strong><small>{data.month.n} payments, before Stripe fees</small></div>
+      <div className="glass kpi"><span>All time</span><strong>{rand(data.all.gross)}</strong><small>{data.all.n} payments</small></div>
+      <div className="glass kpi gold"><span>Premium members</span><strong>{data.subscribers.toLocaleString("en-ZA")}</strong><small>with Premium right now</small></div>
+    </div>
+
+    <section className="glass panel">
+      <div className="panel-head"><h2>Recent payments</h2><a href="https://dashboard.stripe.com/payments" target="_blank" rel="noreferrer">Open Stripe <ExternalLink size={12} /></a></div>
+      {data.recent.length ? <div className="table-wrap"><table className="dash-table"><thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Email</th></tr></thead>
+        <tbody>{data.recent.map((p) => <tr key={p.id}>
+          <td>{new Date(p.created_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" })}</td>
+          <td>{p.kind === "tip" ? "Support" : `Premium · ${p.plan === "annual" ? "Yearly" : "Monthly"}`}</td>
+          <td>{rand(p.amount)}{p.currency && p.currency !== "zar" ? ` ${p.currency.toUpperCase()}` : ""}</td>
+          <td className="muted">{p.email}</td>
+        </tr>)}</tbody></table></div> : <p className="admin-empty">No payments yet. They appear here the moment Stripe confirms them.</p>}
+    </section>
+
+    <section className="glass panel">
+      <div className="panel-head"><h2>Stripe connection</h2><span className={`status-pill ${data.status === "live" ? "on" : data.status === "test mode" ? "test" : ""}`}>{data.status === "live" ? "Live" : data.status === "test mode" ? "Test mode" : data.status === "off" ? "Off" : "Incomplete"}</span></div>
+      <p className="admin-empty">{STATUS[data.status] || data.status}{connected && data.key && <> Key in use: <code>{data.key}</code></>}</p>
+      {connected ? <details className="connect-more"><summary>Change key or turn payments off</summary>{form}</details> : form}
+    </section>
+  </>;
 }

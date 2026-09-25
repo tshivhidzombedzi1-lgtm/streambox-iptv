@@ -49,8 +49,8 @@ export default function AdminSponsors() {
     try { setList(await api("DELETE", `/api/admin/sponsors/${s.id}`)); toast("Sponsor removed"); } catch (err) { toast((err as Error).message); }
   };
 
-  return <section className="admin-card sponsors">
-    <div className="sponsors-head"><h2>Sponsors</h2>{!form && <button className="btn btn-light" onClick={() => setForm(blank())}><Plus size={16} /> Add sponsor</button>}</div>
+  return <section className="glass panel sponsors">
+    <div className="panel-head"><h2>Sponsors</h2>{!form && <button className="btn btn-light" onClick={() => setForm(blank())}><Plus size={16} /> Add sponsor</button>}</div>
     <p className="admin-empty">Banners you sell directly. A running sponsor takes its ad spots ahead of Google ads. Best banner size: 1200 × 250 pixels (wide), PNG or JPG.</p>
 
     {form && <form className="acct-form sponsor-form" onSubmit={submit}>
