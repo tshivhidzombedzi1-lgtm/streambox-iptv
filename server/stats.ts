@@ -70,7 +70,7 @@ function source(ref: string) {
 const perMinute = new Map<string, number>();
 setInterval(() => perMinute.clear(), 60_000).unref();
 
-async function isAdmin(req: Request) {
+export async function isAdmin(req: Request) {
   const user = await currentUser(req);
   if (!user) return false;
   try {
@@ -160,4 +160,14 @@ function registerTrendingRoute(app: Express) {
     }
     res.set("Cache-Control", "public, max-age=300, s-maxage=300").json({ ids: trending.ids });
   });
+}
+
+// Counters for other modules (sponsor views and clicks): same daily aggregation.
+export function countEvent(metric: string, key: string) {
+  bump(dayOf(Date.now()), metric, key.slice(0, 80));
+}
+export function eventTotals(metric: string) {
+  flush();
+  const rows = db.prepare("SELECT key, SUM(n) n FROM daily WHERE metric = ? GROUP BY key").all(metric) as { key: string; n: number }[];
+  return Object.fromEntries(rows.map((r) => [r.key, Number(r.n)]));
 }

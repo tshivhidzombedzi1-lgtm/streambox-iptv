@@ -131,6 +131,12 @@ function pageFor(req: Request): Page | { redirect: string } {
     links: [["/tv-guide", "Today's TV guide"], ["/terms", "Terms of Service"], ["/privacy", "Privacy policy"]],
   };
 
+  if (p === "/advertise") return {
+    status: 200, path: "/advertise", title: "Advertise on YokoTV: reach South African TV viewers",
+    description: "Book a banner on YokoTV, the free live TV service for South Africa: home page, browse pages and the daily TV guide, on phones, computers and smart TVs.",
+    heading: "Advertise on YokoTV", intro: "Sponsor banners on the home page, browse pages and TV guide, with view and click reporting. Email support@yokotv.online for rates.",
+    links: [["/about", "About YokoTV"], ["/tv-guide", "TV guide"]],
+  };
   if (p === "/terms") return {
     status: 200, path: "/terms", title: "Terms of Service | YokoTV",
     description: "The terms for using YokoTV: how the free live TV guide works, fair use, copyright and takedown requests, advertising, and paid services.",
@@ -191,7 +197,7 @@ function render(template: string, page: Page, extraHead = "") {
 
 function sitemap() {
   const cat = getCatalog();
-  const urls: [string, string, string][] = [["/", "hourly", "1.0"], ["/tv-guide", "daily", "0.9"], ["/south-africa", "daily", "0.9"], ["/browse/all", "daily", "0.8"], ["/about", "monthly", "0.4"], ["/terms", "monthly", "0.2"], ["/privacy", "monthly", "0.2"]];
+  const urls: [string, string, string][] = [["/", "hourly", "1.0"], ["/tv-guide", "daily", "0.9"], ["/south-africa", "daily", "0.9"], ["/browse/all", "daily", "0.8"], ["/about", "monthly", "0.4"], ["/advertise", "monthly", "0.5"], ["/terms", "monthly", "0.2"], ["/privacy", "monthly", "0.2"]];
   for (const id of Object.keys(LABELS)) if (cat?.channels.some((c) => c.k.includes(id))) urls.push([`/browse/${id}`, "daily", "0.7"]);
   // South African channels first, then the best-scored channels worldwide.
   const list = cat ? [...cat.channels.filter((c) => c.c === "ZA"), ...cat.channels.filter((c) => c.c !== "ZA").slice(0, 3000)] : [];

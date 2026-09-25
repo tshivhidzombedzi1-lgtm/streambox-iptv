@@ -1,16 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { isTV } from "@/lib/catalog";
 
-// Google AdSense, configured on the server in data/ads.json (see server/ads.ts).
-// Nothing loads until a publisher ID is set. TVs get no ads: AdSense can't be
-// reached with a remote, and the script slows weak TV browsers down.
+// An ad spot. A direct sponsor booked for this spot (server/sponsors.ts) comes
+// first; otherwise Google AdSense fills it (configured in data/ads.json, see
+// server/ads.ts). TVs get sponsor banners but never AdSense: its script slows
+// weak TV browsers down and its ads can't be used with a remote.
 type AdsConfig = { client: string; slots: Record<string, string> };
+type SponsorAd = { id: string; image: string; alt: string; slots: string[] };
 let config: Promise<AdsConfig> | null = null;
+let sponsors: Promise<SponsorAd[]> | null = null;
 let scriptAdded = false;
 
 function loadConfig() {
   if (!config) config = fetch("/api/config").then((r) => r.json()).then((j) => j.ads as AdsConfig).catch(() => ({ client: "", slots: {} }));
   return config;
+}
+function loadSponsors() {
+  if (!sponsors) sponsors = fetch("/api/sponsors").then((r) => r.json()).then((j) => j.sponsors as SponsorAd[]).catch(() => []);
+  return sponsors;
 }
 
 function addScript(client: string) {
@@ -33,23 +40,37 @@ export function useAds() {
   }, []);
 }
 
-export default function AdSlot({ name }: { name: "home" | "browse" }) {
-  const [ad, setAd] = useState<{ client: string; slot: string } | null>(null);
+type Filled = { kind: "sponsor"; ad: SponsorAd } | { kind: "adsense"; client: string; slot: string };
+
+export default function AdSlot({ name }: { name: "home" | "browse" | "guide" }) {
+  const [fill, setFill] = useState<Filled | null>(null);
   const ref = useRef<HTMLModElement>(null);
   useEffect(() => {
-    if (isTV) return;
     let live = true;
-    loadConfig().then((c) => { if (live && c.client && c.slots[name]) setAd({ client: c.client, slot: c.slots[name] }); });
+    loadSponsors().then(async (list) => {
+      const booked = list.filter((s) => s.slots.includes(name));
+      if (!live) return;
+      // Several sponsors on one spot share it: one is picked at random per view.
+      if (booked.length) return setFill({ kind: "sponsor", ad: booked[Math.floor(Math.random() * booked.length)] });
+      if (isTV) return;
+      const c = await loadConfig();
+      if (live && c.client && c.slots[name]) setFill({ kind: "adsense", client: c.client, slot: c.slots[name] });
+    });
     return () => { live = false; };
   }, [name]);
   useEffect(() => {
-    if (!ad || !ref.current) return;
-    addScript(ad.client);
+    if (fill?.kind === "sponsor") { fetch(`/api/sponsors/${fill.ad.id}/view`, { method: "POST", keepalive: true }).catch(() => undefined); return; }
+    if (fill?.kind !== "adsense" || !ref.current) return;
+    addScript(fill.client);
     try { ((window as unknown as { adsbygoogle: unknown[] }).adsbygoogle ||= []).push({}); } catch {}
-  }, [ad]);
-  if (!ad) return null;
+  }, [fill]);
+  if (!fill) return null;
+  if (fill.kind === "sponsor") return <aside className="ad-slot sponsor-slot" aria-label="Sponsored">
+    <span className="ad-label">Sponsored</span>
+    <a href={`/go/${fill.ad.id}`} target="_blank" rel="sponsored noopener"><img src={fill.ad.image} alt={fill.ad.alt} loading="lazy" /></a>
+  </aside>;
   return <aside className="ad-slot" aria-label="Advertisement">
     <span className="ad-label">Advertisement</span>
-    <ins ref={ref} className="adsbygoogle" style={{ display: "block" }} data-ad-client={ad.client} data-ad-slot={ad.slot} data-ad-format="auto" data-full-width-responsive="true" />
+    <ins ref={ref} className="adsbygoogle" style={{ display: "block" }} data-ad-client={fill.client} data-ad-slot={fill.slot} data-ad-format="auto" data-full-width-responsive="true" />
   </aside>;
 }
