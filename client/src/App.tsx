@@ -11,6 +11,7 @@ import { trackView } from "./lib/growth";
 import AdminScreen from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import PrivacyScreen from "./pages/Privacy";
+import TermsScreen from "./pages/Terms";
 import { BrowseScreen, HomeScreen, MyListScreen, SearchScreen, WatchScreen } from "./pages/Screens";
 
 let oneTapShown = false;
@@ -42,6 +43,7 @@ export default function App() {
       <Route path="/watch/:id" component={WatchScreen} />
       <Route path="/reset" component={ResetScreen} />
       <Route path="/privacy" component={PrivacyScreen} />
+      <Route path="/terms" component={TermsScreen} />
       <Route path="/admin" component={AdminScreen} />
       <Route component={NotFound} />
     </Switch>

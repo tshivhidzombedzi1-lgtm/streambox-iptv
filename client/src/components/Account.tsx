@@ -61,7 +61,7 @@ export function AccountSheet({ onClose, initial = "signin" }: { onClose: () => v
       {mode === "signin" && <button type="button" className="acct-link" onClick={() => { setMode("forgot"); setError(""); }}>Forgot your password?</button>}
       <p className="acct-switch">{mode === "signup" ? "Already have an account?" : "New to YokoTV?"}{" "}
         <button type="button" className="acct-link" onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setError(""); }}>{mode === "signup" ? "Sign in" : "Create a free account"}</button></p>
-      {mode === "signup" && <p className="acct-fine">By creating an account you agree to our <Link href="/privacy" onClick={onClose}>privacy policy</Link>.</p>}
+      {mode === "signup" && <p className="acct-fine">By creating an account you agree to our <Link href="/terms" onClick={onClose}>Terms of Service</Link> and <Link href="/privacy" onClick={onClose}>privacy policy</Link>.</p>}
     </form>;
 
   const title = user ? "Your account" : mode === "signup" ? "Create your account" : mode === "forgot" ? "Reset your password" : "Sign in";

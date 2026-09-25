@@ -107,6 +107,11 @@ function pageFor(req: Request): Page | { redirect: string } {
     description: "How YokoTV handles your data: optional accounts, synced lists, Google AdSense cookies, and your rights under POPIA.",
     heading: "Privacy policy", intro: "", links: [["/", "Watch live TV"], ["/south-africa", "South African TV channels"]],
   };
+  if (p === "/terms") return {
+    status: 200, path: "/terms", title: "Terms of Service | YokoTV",
+    description: "The terms for using YokoTV: how the free live TV guide works, fair use, copyright and takedown requests, advertising, and paid services.",
+    heading: "Terms of Service", intro: "", links: [["/", "Watch live TV"], ["/privacy", "Privacy policy"]],
+  };
   if (p === "/search" || p === "/my-list" || p === "/favorites" || p === "/reset" || p === "/admin") return { ...fallback(p), status: 200, noindex: true };
   return notFound(p);
 }
