@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, ChevronRight, Compass, Heart, Home, Play, Plus, Search, Settings2, UserRound, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Compass, Crown, Heart, Home, Play, Plus, Search, Settings2, UserRound, X } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
@@ -132,6 +132,7 @@ export function TopNav({ catalog }: { catalog?: Catalog | null }) {
           <input ref={input} value={q} onChange={(e) => onSearch(e.target.value)} onBlur={() => !q && setSearchOpen(false)} placeholder="Channels, countries, genres" />
           {q && <button onClick={() => onSearch("")} aria-label="Clear"><X size={16} /></button>}
         </div>
+        {!user?.premium && <Link href="/premium" className="nav-premium" aria-label="YokoTV Premium"><Crown size={16} /><span>Premium</span></Link>}
         <InstallButton />
         <button className="nav-icon" onClick={() => setSettingsOpen(true)} aria-label="Settings"><Settings2 size={20} /></button>
         <button className={`nav-icon nav-account ${user ? "in" : ""} ${user?.premium ? "premium" : ""}`} onClick={() => setAccountOpen(true)} aria-label={user ? "Your account" : "Sign in"}>{user ? (user.name || user.email)[0].toUpperCase() : <UserRound size={20} />}</button>

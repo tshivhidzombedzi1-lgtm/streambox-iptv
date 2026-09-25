@@ -532,3 +532,7 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border: 0; bord
 .pay-tiles { margin: .6rem 0 0; }
 .stripe-connect { max-width: 620px; margin: .8rem 0 0; }
 .stripe-connect code, .admin-empty code { padding: 1px 5px; border-radius: 4px; background: var(--surface-2); font-size: .82rem; }
+.nav-premium { display: inline-flex; align-items: center; height: 34px; padding: 0 .85rem; border-radius: 17px; background: #f5c451; color: #1b1400; font-size: .82rem; font-weight: 800; white-space: nowrap; text-decoration: none; }
+.nav-premium svg { margin-right: .35rem; }
+.nav-premium:hover, .nav-premium:focus { background: #ffd66e; }
+@media (max-width: 560px) { .nav-premium { width: 34px; padding: 0; justify-content: center; } .nav-premium span { display: none; } .nav-premium svg { margin: 0; } }
