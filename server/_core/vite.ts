@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import { registerSeo } from "../seo";
 import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
@@ -58,10 +59,11 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // Hashed build files never change, so browsers (TVs especially) can keep them
+  // for a year instead of re-checking each one on every visit.
+  app.use("/assets", express.static(path.resolve(distPath, "assets"), { immutable: true, maxAge: "365d" }));
+  app.use(express.static(distPath, { index: false }));
 
-  // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
-  });
+  // Everything else is an app route: index.html with per-page SEO filled in.
+  registerSeo(app, distPath);
 }

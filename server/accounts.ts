@@ -1,0 +1,206 @@
+// Optional YokoTV accounts: email + password, stored in a SQLite file next to
+// the catalog (no external database). An account only syncs what the app
+// already keeps per device: My List, Continue watching and settings.
+import { spawn } from "node:child_process";
+import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import type { Express, Request, Response } from "express";
+import { jwtVerify, SignJWT } from "jose";
+
+const DATA_DIR = path.resolve(process.cwd(), "data");
+const COOKIE = "yk_session";
+const SESSION_DAYS = 180;
+const SITE = "https://yokotv.online";
+const MAIL_FROM = "YokoTV <no-reply@yokotv.online>";
+
+fs.mkdirSync(DATA_DIR, { recursive: true });
+const db = new DatabaseSync(path.join(DATA_DIR, "yokotv.db"));
+db.exec(`
+  PRAGMA journal_mode = WAL;
+  PRAGMA foreign_keys = ON;
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    name TEXT NOT NULL DEFAULT '',
+    pass TEXT NOT NULL,
+    session_version INTEGER NOT NULL DEFAULT 1,
+    created_at INTEGER NOT NULL,
+    last_login INTEGER
+  );
+  CREATE TABLE IF NOT EXISTS user_data (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    data TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS password_resets (
+    token_hash TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at INTEGER NOT NULL
+  );
+`);
+
+// Signing key: JWT_SECRET if the host sets one, otherwise a random key kept on disk.
+function loadSecret() {
+  if (process.env.JWT_SECRET) return new TextEncoder().encode(process.env.JWT_SECRET);
+  const file = path.join(DATA_DIR, ".session-secret");
+  if (!fs.existsSync(file)) fs.writeFileSync(file, crypto.randomBytes(48).toString("hex"), { mode: 0o600 });
+  return new TextEncoder().encode(fs.readFileSync(file, "utf8").trim());
+}
+const secret = loadSecret();
+
+type UserRow = { id: number; email: string; name: string; pass: string; session_version: number; created_at: number };
+const publicUser = (u: UserRow) => ({ id: u.id, email: u.email, name: u.name, createdAt: u.created_at });
+
+function hashPassword(password: string) {
+  const salt = crypto.randomBytes(16);
+  const hash = crypto.scryptSync(password, salt, 64, { N: 16384, r: 8, p: 1 });
+  return `scrypt$${salt.toString("base64")}$${hash.toString("base64")}`;
+}
+function checkPassword(password: string, stored: string) {
+  const [, salt, hash] = stored.split("$");
+  if (!salt || !hash) return false;
+  const expected = Buffer.from(hash, "base64");
+  const actual = crypto.scryptSync(password, Buffer.from(salt, "base64"), expected.length, { N: 16384, r: 8, p: 1 });
+  return crypto.timingSafeEqual(actual, expected);
+}
+
+async function setSession(res: Response, user: UserRow) {
+  const token = await new SignJWT({ v: user.session_version }).setProtectedHeader({ alg: "HS256" })
+    .setSubject(String(user.id)).setIssuedAt().setExpirationTime(`${SESSION_DAYS}d`).sign(secret);
+  res.cookie(COOKIE, token, { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: SESSION_DAYS * 86400_000 });
+}
+
+function readCookie(req: Request, name: string) {
+  const header = req.headers.cookie || "";
+  for (const part of header.split(";")) {
+    const [k, ...v] = part.trim().split("=");
+    if (k === name) return decodeURIComponent(v.join("="));
+  }
+  return "";
+}
+
+export async function currentUser(req: Request): Promise<UserRow | null> {
+  const token = readCookie(req, COOKIE);
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(Number(payload.sub)) as UserRow | undefined;
+    // Changing the password bumps session_version, signing out every other device.
+    return user && user.session_version === payload.v ? user : null;
+  } catch {
+    return null;
+  }
+}
+
+function userData(userId: number) {
+  const row = db.prepare("SELECT data FROM user_data WHERE user_id = ?").get(userId) as { data: string } | undefined;
+  try { return row ? JSON.parse(row.data) : null; } catch { return null; }
+}
+
+// Small in-memory limiter for the endpoints people could brute-force.
+const attempts = new Map<string, number[]>();
+function limited(req: Request, bucket: string, max: number, windowMs = 15 * 60_000) {
+  const key = `${bucket}:${req.ip}`;
+  const now = Date.now();
+  const recent = (attempts.get(key) || []).filter((t) => now - t < windowMs);
+  recent.push(now);
+  attempts.set(key, recent);
+  if (attempts.size > 10_000) attempts.clear();
+  return recent.length > max;
+}
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const clean = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+
+function sendMail(to: string, subject: string, text: string) {
+  const mail = spawn("/usr/sbin/sendmail", ["-t", "-i"], { stdio: ["pipe", "ignore", "ignore"] });
+  mail.on("error", (e) => console.error("[accounts] sendmail failed", e));
+  mail.stdin.end(`From: ${MAIL_FROM}\nTo: ${to}\nSubject: ${subject}\nContent-Type: text/plain; charset=utf-8\n\n${text}\n`);
+}
+
+export function registerAccountRoutes(app: Express) {
+  app.get("/api/account/me", async (req, res) => {
+    const user = await currentUser(req);
+    res.set("Cache-Control", "no-store").json(user ? { user: publicUser(user), data: userData(user.id) } : { user: null });
+  });
+
+  app.post("/api/account/signup", async (req, res) => {
+    if (limited(req, "signup", 10, 60 * 60_000)) return void res.status(429).json({ error: "Too many sign-ups from this connection. Try again later." });
+    const email = clean(req.body?.email, 200).toLowerCase();
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    const name = clean(req.body?.name, 60);
+    if (!EMAIL.test(email)) return void res.status(400).json({ error: "Enter a valid email address." });
+    if (password.length < 8) return void res.status(400).json({ error: "Use a password of at least 8 characters." });
+    if (db.prepare("SELECT 1 FROM users WHERE email = ?").get(email)) return void res.status(409).json({ error: "There’s already an account with that email. Sign in instead." });
+    const now = Date.now();
+    const { lastInsertRowid } = db.prepare("INSERT INTO users (email, name, pass, created_at, last_login) VALUES (?, ?, ?, ?, ?)").run(email, name, hashPassword(password), now, now);
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(lastInsertRowid) as UserRow;
+    await setSession(res, user);
+    res.json({ user: publicUser(user), data: null });
+  });
+
+  app.post("/api/account/login", async (req, res) => {
+    if (limited(req, "login", 10)) return void res.status(429).json({ error: "Too many attempts. Wait 15 minutes and try again." });
+    const email = clean(req.body?.email, 200).toLowerCase();
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email) as UserRow | undefined;
+    if (!user || !checkPassword(password, user.pass)) return void res.status(401).json({ error: "That email and password don’t match." });
+    db.prepare("UPDATE users SET last_login = ? WHERE id = ?").run(Date.now(), user.id);
+    await setSession(res, user);
+    res.json({ user: publicUser(user), data: userData(user.id) });
+  });
+
+  app.post("/api/account/logout", (_req, res) => {
+    res.clearCookie(COOKIE, { path: "/" }).json({ ok: true });
+  });
+
+  app.put("/api/account/data", async (req, res) => {
+    const user = await currentUser(req);
+    if (!user) return void res.status(401).json({ error: "Signed out" });
+    const data = JSON.stringify(req.body?.data ?? {});
+    if (data.length > 64_000) return void res.status(413).json({ error: "Too much data" });
+    db.prepare("INSERT INTO user_data (user_id, data, updated_at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at")
+      .run(user.id, data, Date.now());
+    res.json({ ok: true });
+  });
+
+  app.post("/api/account/forgot", (req, res) => {
+    if (limited(req, "forgot", 5, 60 * 60_000)) return void res.status(429).json({ error: "Too many requests. Try again later." });
+    const email = clean(req.body?.email, 200).toLowerCase();
+    const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email) as UserRow | undefined;
+    if (user) {
+      const token = crypto.randomBytes(32).toString("base64url");
+      const hash = crypto.createHash("sha256").update(token).digest("hex");
+      db.prepare("DELETE FROM password_resets WHERE user_id = ? OR expires_at < ?").run(user.id, Date.now());
+      db.prepare("INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES (?, ?, ?)").run(hash, user.id, Date.now() + 60 * 60_000);
+      sendMail(user.email, "Reset your YokoTV password",
+        `Hi${user.name ? ` ${user.name}` : ""},\n\nSomeone asked to reset the password for your YokoTV account. If it was you, open this link within an hour:\n\n${SITE}/reset?token=${token}\n\nIf it wasn’t you, ignore this email and your password stays the same.\n\nYokoTV`);
+    }
+    // Same answer either way, so the form can't be used to find out who has an account.
+    res.json({ ok: true });
+  });
+
+  app.post("/api/account/reset", async (req, res) => {
+    if (limited(req, "reset", 10)) return void res.status(429).json({ error: "Too many attempts. Try again later." });
+    const token = clean(req.body?.token, 200);
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    if (password.length < 8) return void res.status(400).json({ error: "Use a password of at least 8 characters." });
+    const hash = crypto.createHash("sha256").update(token).digest("hex");
+    const row = db.prepare("SELECT * FROM password_resets WHERE token_hash = ? AND expires_at > ?").get(hash, Date.now()) as { user_id: number } | undefined;
+    if (!row) return void res.status(400).json({ error: "This reset link has expired or was already used. Ask for a new one." });
+    db.prepare("UPDATE users SET pass = ?, session_version = session_version + 1 WHERE id = ?").run(hashPassword(password), row.user_id);
+    db.prepare("DELETE FROM password_resets WHERE user_id = ?").run(row.user_id);
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(row.user_id) as UserRow;
+    await setSession(res, user);
+    res.json({ user: publicUser(user), data: userData(user.id) });
+  });
+
+  app.delete("/api/account", async (req, res) => {
+    const user = await currentUser(req);
+    if (!user) return void res.status(401).json({ error: "Signed out" });
+    db.prepare("DELETE FROM users WHERE id = ?").run(user.id);
+    res.clearCookie(COOKIE, { path: "/" }).json({ ok: true });
+  });
+}

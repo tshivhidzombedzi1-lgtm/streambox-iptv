@@ -5,6 +5,12 @@ import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
+import { registerCatalogRoutes, startCatalog } from "../catalog";
+import { registerAccountRoutes } from "../accounts";
+import { registerAdsRoutes } from "../ads";
+import { registerStatsRoutes } from "../stats";
+import { registerEpgRoutes, startEpg } from "../epg";
+import { registerStreamProxy } from "../streamProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -30,12 +36,22 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   const app = express();
+  // Behind Hostinger's CDN and LiteSpeed: use the visitor's address for rate limits.
+  app.set("trust proxy", true);
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+  registerCatalogRoutes(app);
+  registerAccountRoutes(app);
+  registerAdsRoutes(app);
+  registerStatsRoutes(app);
+  registerEpgRoutes(app);
+  registerStreamProxy(app);
+  startCatalog();
+  startEpg();
   // tRPC API
   app.use(
     "/api/trpc",

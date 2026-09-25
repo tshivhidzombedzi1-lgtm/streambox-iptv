@@ -45,7 +45,7 @@ export const appRouter = router({
     }),
   }),
   watchRooms: router({
-    create: protectedProcedure.input(z.object({ name: z.string().trim().min(2).max(120).default("WONDERBOX watch party") })).mutation(async ({ ctx, input }) => {
+    create: protectedProcedure.input(z.object({ name: z.string().trim().min(2).max(120).default("YokoTV watch party") })).mutation(async ({ ctx, input }) => {
       const room = await createWatchRoom(ctx.user.id, input.name);
       return { room, snapshot: await getRoomSnapshot(room.id) };
     }),
