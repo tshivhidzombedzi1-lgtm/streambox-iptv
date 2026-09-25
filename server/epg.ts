@@ -171,6 +171,7 @@ async function build(log = console.log) {
     if (Object.keys(channels).length) {
       guide = { builtAt: new Date().toISOString(), channels };
       nowCache = null;
+      todayCache = null;
       fs.mkdirSync(DATA_DIR, { recursive: true });
       fs.writeFileSync(EPG_FILE + ".tmp", JSON.stringify(guide));
       fs.renameSync(EPG_FILE + ".tmp", EPG_FILE);
@@ -205,7 +206,31 @@ function nowNext() {
   return nowCache.body;
 }
 
+// Today's TV guide page: South African channels first, then the best-ranked
+// other channels that have a guide, each with what's on from now until midnight
+// (South African time).
+export type TodayChannel = { id: string; n: string; l?: string; c: string; programmes: Programme[] };
+let todayCache: { at: number; body: { date: string; channels: TodayChannel[] } } | null = null;
+export function tvGuideToday(limit = 40) {
+  if (todayCache && Date.now() - todayCache.at < 5 * 60_000) return todayCache.body;
+  const now = Date.now();
+  const sast = new Date(now + 2 * 3600_000);
+  const midnight = Date.UTC(sast.getUTCFullYear(), sast.getUTCMonth(), sast.getUTCDate() + 1) - 2 * 3600_000;
+  const channels = getCatalog()?.channels || [];
+  const guided = channels.filter((c) => guide.channels[c.id]?.some((p) => p.e > now && p.s < midnight));
+  const picked = [...guided.filter((c) => c.c === "ZA"), ...guided.filter((c) => c.c !== "ZA" && c.en === 0)].slice(0, limit);
+  const body = {
+    date: sast.toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }),
+    channels: picked.map((c) => ({ id: c.id, n: c.n, l: c.l, c: c.c, programmes: guide.channels[c.id].filter((p) => p.e > now && p.s < midnight).map(({ s, e, t }) => ({ s, e, t })) })),
+  };
+  todayCache = { at: now, body };
+  return body;
+}
+
 export function registerEpgRoutes(app: Express) {
+  app.get("/api/epg/today", (_req, res) => {
+    res.set("Cache-Control", "public, max-age=300, s-maxage=300").json(tvGuideToday());
+  });
   app.get("/api/epg/now", (_req, res) => {
     res.set("Cache-Control", "public, max-age=60, s-maxage=60").type("json").send(nowNext());
   });

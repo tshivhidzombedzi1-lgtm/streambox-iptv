@@ -98,7 +98,7 @@ export function Grid({ channels, context }: { channels: Channel[]; context?: str
 }
 
 const NAV = [
-  ["/", "Home"], ["/browse/all", "Live TV"], ["/browse/news", "News"], ["/browse/sports", "Sports"],
+  ["/", "Home"], ["/tv-guide", "TV Guide"], ["/browse/all", "Live TV"], ["/browse/news", "News"], ["/browse/sports", "Sports"],
   ["/browse/movies", "Movies"], ["/browse/kids", "Kids"], ["/browse/music", "Music"], ["/browse/african", "African"], ["/browse/anime", "Anime"], ["/my-list", "My List"],
 ] as const;
 

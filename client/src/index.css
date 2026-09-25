@@ -441,3 +441,20 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border: 0; bord
 .acct-or { position: relative; margin: 1rem 0 .9rem; text-align: center; font-size: .78rem; color: var(--text-3); }
 .acct-or::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid var(--line); }
 .acct-or span { position: relative; padding: 0 .7rem; background: var(--surface); }
+
+/* TV guide page */
+.guide-page { max-width: 1180px; margin: 0 auto; padding: 88px var(--gutter) 2rem; }
+.guide-page .page-head p { color: var(--text-2); }
+.guide-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); grid-gap: 1rem; margin-top: 1.4rem; }
+.guide-channel { border-radius: 12px; background: var(--surface); border: 1px solid var(--line); overflow: hidden; }
+.guide-channel header { display: flex; align-items: center; padding: .8rem .9rem; border-bottom: 1px solid var(--line); }
+.guide-logo { position: relative; flex: none; width: 72px; height: 41px; margin-right: .8rem; border-radius: 6px; overflow: hidden; }
+.guide-channel h2 { flex: 1; min-width: 0; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.guide-watch { flex: none; height: 34px; padding: 0 .9rem; font-size: .85rem; }
+.guide-channel ol { margin: 0; padding: .3rem 0; list-style: none; max-height: 320px; overflow-y: auto; }
+.guide-channel li { display: flex; align-items: baseline; padding: .42rem .9rem; font-size: .9rem; }
+.guide-channel li.on { background: rgba(255,59,79,.1); box-shadow: inset 3px 0 0 var(--live); }
+.guide-channel time { flex: none; width: 3.3rem; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.guide-channel li span { flex: 1; min-width: 0; }
+.guide-channel em { flex: none; margin-left: .5rem; padding: 1px 6px; border-radius: 3px; background: var(--live); color: #fff; font-style: normal; font-size: .62rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+@media (max-width: 800px) { .guide-page { padding-top: 72px; } .guide-list { grid-template-columns: 1fr; } }

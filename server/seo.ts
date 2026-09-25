@@ -7,6 +7,7 @@ import path from "node:path";
 import type { Express, Request, Response } from "express";
 import { readConfig as readAdsConfig } from "./ads";
 import { type CatalogChannel, getCatalog } from "./catalog";
+import { tvGuideToday } from "./epg";
 
 const SITE = "https://yokotv.online";
 const LABELS: Record<string, string> = {
@@ -18,7 +19,8 @@ const LABELS: Record<string, string> = {
 };
 const SA_NAMES = "SABC 1, SABC 3, SABC News, SABC Education";
 
-type Page = { status: number; title: string; description: string; path: string; heading: string; intro: string; links: [string, string][]; jsonLd?: object[]; noindex?: boolean };
+// body: extra crawlable HTML (already escaped), e.g. the day's TV schedule.
+type Page = { status: number; title: string; description: string; path: string; heading: string; intro: string; links: [string, string][]; jsonLd?: object[]; noindex?: boolean; body?: string };
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const watchPath = (ch: CatalogChannel) => `/watch/${encodeURIComponent(ch.id)}`;
@@ -107,6 +109,28 @@ function pageFor(req: Request): Page | { redirect: string } {
     description: "How YokoTV handles your data: optional accounts, synced lists, Google AdSense cookies, and your rights under POPIA.",
     heading: "Privacy policy", intro: "", links: [["/", "Watch live TV"], ["/south-africa", "South African TV channels"]],
   };
+  if (p === "/tv-guide") {
+    const today = tvGuideToday();
+    const time = (t: number) => new Date(t + 2 * 3600_000).toISOString().slice(11, 16);
+    const sa = today.channels.filter((c) => c.c === "ZA").map((c) => c.n);
+    return {
+      status: 200, path: "/tv-guide",
+      title: `TV Guide Today (${today.date}): What's on SABC 1, SABC 2, SABC 3 & more | YokoTV`,
+      description: `What's on TV today in South Africa, ${today.date}: full schedules for ${sa.slice(0, 6).join(", ")} and more, with times. Watch live and free on YokoTV.`,
+      heading: `TV guide for ${today.date}`,
+      intro: `Today's TV schedule for South African and international channels, in South African time. Every programme listed is on a channel you can watch live on YokoTV.`,
+      body: today.channels.map((c) => `<h3><a href="/watch/${esc(encodeURIComponent(c.id))}">${esc(c.n)}</a></h3><ul>${c.programmes.map((pr) => `<li>${time(pr.s)} ${esc(pr.t)}</li>`).join("")}</ul>`).join(""),
+      links: [["/south-africa", "South African TV channels"], ["/", "Watch live TV"]],
+    };
+  }
+
+  if (p === "/about") return {
+    status: 200, path: "/about", title: "About YokoTV: free live TV for South Africa",
+    description: "YokoTV is a free live TV guide and player for South Africa: local and international channels, a daily TV guide, and a player built for phones, laptops and smart TVs.",
+    heading: "About YokoTV", intro: "YokoTV brings free live TV channels from South Africa and around the world into one fast player, with a daily TV guide. It's free to use and funded by advertising.",
+    links: [["/tv-guide", "Today's TV guide"], ["/terms", "Terms of Service"], ["/privacy", "Privacy policy"]],
+  };
+
   if (p === "/terms") return {
     status: 200, path: "/terms", title: "Terms of Service | YokoTV",
     description: "The terms for using YokoTV: how the free live TV guide works, fair use, copyright and takedown requests, advertising, and paid services.",
@@ -155,7 +179,7 @@ function render(template: string, page: Page, extraHead = "") {
     ...(page.jsonLd || []).map((d) => `<script type="application/ld+json">${JSON.stringify(d).replace(/</g, "\\u003c")}</script>`),
     extraHead,
   ].join("\n    ");
-  const body = `<section class="seo-foot" aria-label="About YokoTV"><h2>${esc(page.heading)}</h2>${page.intro ? `<p>${esc(page.intro)}</p>` : ""}<nav><ul>${page.links.map(([href, text]) => `<li><a href="${esc(href)}">${esc(text)}</a></li>`).join("")}</ul></nav></section>`;
+  const body = `<section class="seo-foot" aria-label="About YokoTV"><h2>${esc(page.heading)}</h2>${page.intro ? `<p>${esc(page.intro)}</p>` : ""}${page.body || ""}<nav><ul>${page.links.map(([href, text]) => `<li><a href="${esc(href)}">${esc(text)}</a></li>`).join("")}</ul></nav></section>`;
   return template
     .replace(/<title>[\s\S]*?<\/title>/, "")
     .replace(/\s*<meta name="description"[^>]*>/, "")
@@ -167,7 +191,7 @@ function render(template: string, page: Page, extraHead = "") {
 
 function sitemap() {
   const cat = getCatalog();
-  const urls: [string, string, string][] = [["/", "hourly", "1.0"], ["/south-africa", "daily", "0.9"], ["/browse/all", "daily", "0.8"]];
+  const urls: [string, string, string][] = [["/", "hourly", "1.0"], ["/tv-guide", "daily", "0.9"], ["/south-africa", "daily", "0.9"], ["/browse/all", "daily", "0.8"], ["/about", "monthly", "0.4"], ["/terms", "monthly", "0.2"], ["/privacy", "monthly", "0.2"]];
   for (const id of Object.keys(LABELS)) if (cat?.channels.some((c) => c.k.includes(id))) urls.push([`/browse/${id}`, "daily", "0.7"]);
   // South African channels first, then the best-scored channels worldwide.
   const list = cat ? [...cat.channels.filter((c) => c.c === "ZA"), ...cat.channels.filter((c) => c.c !== "ZA").slice(0, 3000)] : [];

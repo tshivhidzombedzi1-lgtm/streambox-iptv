@@ -12,6 +12,8 @@ import AdminScreen from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import PrivacyScreen from "./pages/Privacy";
 import TermsScreen from "./pages/Terms";
+import TvGuideScreen from "./pages/TvGuide";
+import AboutScreen from "./pages/About";
 import { BrowseScreen, HomeScreen, MyListScreen, SearchScreen, WatchScreen } from "./pages/Screens";
 
 let oneTapShown = false;
@@ -44,6 +46,8 @@ export default function App() {
       <Route path="/reset" component={ResetScreen} />
       <Route path="/privacy" component={PrivacyScreen} />
       <Route path="/terms" component={TermsScreen} />
+      <Route path="/tv-guide" component={TvGuideScreen} />
+      <Route path="/about" component={AboutScreen} />
       <Route path="/admin" component={AdminScreen} />
       <Route component={NotFound} />
     </Switch>
