@@ -18,7 +18,7 @@ const inCat = (ch: Channel, cat: string) => ch.k.includes(cat);
 // Browsing pages only: the watch page has no Shell, so ads never load over the player.
 export function Shell({ catalog, children }: { catalog: Catalog | null; children: React.ReactNode }) {
   useAds();
-  return <div className="app"><TopNav catalog={catalog} />{children}<footer className="foot"><span>YokoTV</span><span>Free live TV from public broadcasters worldwide. Channel availability depends on each broadcaster.</span><Link href="/about">About</Link><Link href="/advertise">Advertise</Link><Link href="/terms">Terms</Link><Link href="/privacy">Privacy policy</Link></footer></div>;
+  return <div className="app"><TopNav catalog={catalog} />{children}<footer className="foot"><span>YokoTV</span><span>Free live TV from public broadcasters worldwide. Channel availability depends on each broadcaster.</span><Link href="/premium">Premium</Link><Link href="/about">About</Link><Link href="/advertise">Advertise</Link><Link href="/terms">Terms</Link><Link href="/privacy">Privacy policy</Link></footer></div>;
 }
 
 function Loading({ error }: { error: boolean }) {

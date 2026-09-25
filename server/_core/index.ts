@@ -11,6 +11,7 @@ import { registerAdsRoutes } from "../ads";
 import { registerStatsRoutes } from "../stats";
 import { registerEpgRoutes, startEpg } from "../epg";
 import { registerSponsorRoutes } from "../sponsors";
+import { registerPaymentRoutes } from "../payments";
 import { registerStreamProxy } from "../streamProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -41,7 +42,8 @@ async function startServer() {
   app.set("trust proxy", true);
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
+  // The raw body is kept for webhook signature checks (Paystack signs the exact bytes).
+  app.use(express.json({ limit: "50mb", verify: (req, _res, buf) => { (req as unknown as { rawBody: Buffer }).rawBody = buf; } }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
@@ -51,6 +53,7 @@ async function startServer() {
   registerStatsRoutes(app);
   registerEpgRoutes(app);
   registerSponsorRoutes(app);
+  registerPaymentRoutes(app);
   registerStreamProxy(app);
   startCatalog();
   startEpg();

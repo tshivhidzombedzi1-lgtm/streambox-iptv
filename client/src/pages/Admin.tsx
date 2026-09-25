@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { AccountSheet } from "@/components/Account";
 import AdminSponsors from "@/pages/AdminSponsors";
+import AdminPayments from "@/pages/AdminPayments";
 import { account } from "@/lib/account";
 import { countryName, getChannel, useCatalog, useStore } from "@/lib/catalog";
 
@@ -53,6 +54,7 @@ export default function AdminScreen() {
     </header>
     {error ? <p className="acct-error">{error}</p> : !data ? <div className="state small"><div className="loader" /></div> : <>
       <div className="admin-tiles">{tiles.map(([label, n, hint]) => <div key={label} className="admin-tile"><span>{label}</span><strong>{fmt(n)}</strong>{hint && <small>{hint}</small>}</div>)}</div>
+      <AdminPayments />
       <AdminSponsors />
       <section className="admin-card"><h2>Visitors per day</h2><DailyBars daily={data.daily} /></section>
       <div className="admin-grid">

@@ -6,7 +6,7 @@ import { track } from "./growth";
 import { toast } from "sonner";
 import { googleSignedOut, setGoogleHandler } from "./google";
 
-export type User = { id: number; email: string; name: string; createdAt: number };
+export type User = { id: number; email: string; name: string; createdAt: number; premium: boolean; premiumUntil: number | null; plan: string | null; renews: boolean };
 type Synced = { myList?: string[]; recents?: string[]; settings?: Partial<Settings> };
 
 let state: { user: User | null; ready: boolean } = { user: null, ready: false };
@@ -94,4 +94,16 @@ setGoogleHandler(async (credential) => {
 export async function deleteAccount() {
   await call("DELETE", "/api/account");
   update({ user: null });
+}
+
+// Premium: stop renewing (it lasts to the end of the paid period), and re-read
+// the account, e.g. after checkout while Stripe's confirmation arrives.
+export async function cancelPremium() {
+  await call("POST", "/api/pay/cancel");
+  await refreshAccount();
+}
+export async function refreshAccount() {
+  const result = await call("GET", "/api/account/me");
+  update({ user: result.user || null });
+  return result.user as User | null;
 }

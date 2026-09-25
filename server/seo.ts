@@ -5,6 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Express, Request, Response } from "express";
+import { currentUser, isPremium } from "./accounts";
 import { readConfig as readAdsConfig } from "./ads";
 import { type CatalogChannel, getCatalog } from "./catalog";
 import { tvGuideToday } from "./epg";
@@ -131,6 +132,12 @@ function pageFor(req: Request): Page | { redirect: string } {
     links: [["/tv-guide", "Today's TV guide"], ["/terms", "Terms of Service"], ["/privacy", "Privacy policy"]],
   };
 
+  if (p === "/premium") return {
+    status: 200, path: "/premium", title: "YokoTV Premium: watch live TV without ads",
+    description: "YokoTV stays free for everyone. Premium removes every ad from R29 a month, cancel any time. You can also support YokoTV with a once-off amount.",
+    heading: "YokoTV Premium", intro: "Watch without ads for R29 a month or R249 a year, and support YokoTV. Cancel any time.",
+    links: [["/", "Watch live TV"], ["/terms", "Terms of Service"]],
+  };
   if (p === "/advertise") return {
     status: 200, path: "/advertise", title: "Advertise on YokoTV: reach South African TV viewers",
     description: "Book a banner on YokoTV, the free live TV service for South Africa: home page, browse pages and the daily TV guide, on phones, computers and smart TVs.",
@@ -197,7 +204,7 @@ function render(template: string, page: Page, extraHead = "") {
 
 function sitemap() {
   const cat = getCatalog();
-  const urls: [string, string, string][] = [["/", "hourly", "1.0"], ["/tv-guide", "daily", "0.9"], ["/south-africa", "daily", "0.9"], ["/browse/all", "daily", "0.8"], ["/about", "monthly", "0.4"], ["/advertise", "monthly", "0.5"], ["/terms", "monthly", "0.2"], ["/privacy", "monthly", "0.2"]];
+  const urls: [string, string, string][] = [["/", "hourly", "1.0"], ["/tv-guide", "daily", "0.9"], ["/south-africa", "daily", "0.9"], ["/browse/all", "daily", "0.8"], ["/about", "monthly", "0.4"], ["/advertise", "monthly", "0.5"], ["/premium", "monthly", "0.6"], ["/terms", "monthly", "0.2"], ["/privacy", "monthly", "0.2"]];
   for (const id of Object.keys(LABELS)) if (cat?.channels.some((c) => c.k.includes(id))) urls.push([`/browse/${id}`, "daily", "0.7"]);
   // South African channels first, then the best-scored channels worldwide.
   const list = cat ? [...cat.channels.filter((c) => c.c === "ZA"), ...cat.channels.filter((c) => c.c !== "ZA").slice(0, 3000)] : [];
@@ -215,9 +222,11 @@ export function registerSeo(app: Express, distPath: string) {
   app.get("/sitemap.xml", (_req, res) => {
     res.type("application/xml").set("Cache-Control", "public, max-age=3600").send(sitemap());
   });
-  app.use("*", (req: Request, res: Response) => {
+  app.use("*", async (req: Request, res: Response) => {
     const page = pageFor(req);
     if ("redirect" in page) { res.redirect(301, page.redirect); return; }
-    res.status(page.status).set("Cache-Control", "public, max-age=0, must-revalidate").type("html").send(render(template, page, adsScript(req, page)));
+    // Premium members get no ads script; pages differ per person, so the CDN mustn't share them.
+    const premium = isPremium(await currentUser(req).catch(() => null));
+    res.status(page.status).set("Cache-Control", "private, max-age=0, must-revalidate").type("html").send(render(template, page, premium ? "" : adsScript(req, page)));
   });
 }

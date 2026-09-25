@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { isTV } from "@/lib/catalog";
+import { account } from "@/lib/account";
+import { isTV, useStore } from "@/lib/catalog";
 
 // An ad spot. A direct sponsor booked for this spot (server/sponsors.ts) comes
 // first; otherwise Google AdSense fills it (configured in data/ads.json, see
 // server/ads.ts). TVs get sponsor banners but never AdSense: its script slows
-// weak TV browsers down and its ads can't be used with a remote.
+// weak TV browsers down and its ads can't be used with a remote. Premium members
+// see no ads at all.
 type AdsConfig = { client: string; slots: Record<string, string> };
 type SponsorAd = { id: string; image: string; alt: string; slots: string[] };
 let config: Promise<AdsConfig> | null = null;
@@ -34,18 +36,21 @@ function addScript(client: string) {
 
 // Loads the AdSense script once (which also enables Auto ads if they're on in AdSense).
 export function useAds() {
+  const premium = !!useStore(account).user?.premium;
   useEffect(() => {
-    if (isTV) return;
+    if (isTV || premium) return;
     loadConfig().then((c) => { if (c.client) addScript(c.client); });
-  }, []);
+  }, [premium]);
 }
 
 type Filled = { kind: "sponsor"; ad: SponsorAd } | { kind: "adsense"; client: string; slot: string };
 
 export default function AdSlot({ name }: { name: "home" | "browse" | "guide" }) {
+  const premium = !!useStore(account).user?.premium;
   const [fill, setFill] = useState<Filled | null>(null);
   const ref = useRef<HTMLModElement>(null);
   useEffect(() => {
+    if (premium) return setFill(null);
     let live = true;
     loadSponsors().then(async (list) => {
       const booked = list.filter((s) => s.slots.includes(name));
@@ -57,7 +62,7 @@ export default function AdSlot({ name }: { name: "home" | "browse" | "guide" }) 
       if (live && c.client && c.slots[name]) setFill({ kind: "adsense", client: c.client, slot: c.slots[name] });
     });
     return () => { live = false; };
-  }, [name]);
+  }, [name, premium]);
   useEffect(() => {
     if (fill?.kind === "sponsor") { fetch(`/api/sponsors/${fill.ad.id}/view`, { method: "POST", keepalive: true }).catch(() => undefined); return; }
     if (fill?.kind !== "adsense" || !ref.current) return;

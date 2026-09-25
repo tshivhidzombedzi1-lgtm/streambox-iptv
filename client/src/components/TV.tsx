@@ -134,7 +134,7 @@ export function TopNav({ catalog }: { catalog?: Catalog | null }) {
         </div>
         <InstallButton />
         <button className="nav-icon" onClick={() => setSettingsOpen(true)} aria-label="Settings"><Settings2 size={20} /></button>
-        <button className={`nav-icon nav-account ${user ? "in" : ""}`} onClick={() => setAccountOpen(true)} aria-label={user ? "Your account" : "Sign in"}>{user ? (user.name || user.email)[0].toUpperCase() : <UserRound size={20} />}</button>
+        <button className={`nav-icon nav-account ${user ? "in" : ""} ${user?.premium ? "premium" : ""}`} onClick={() => setAccountOpen(true)} aria-label={user ? "Your account" : "Sign in"}>{user ? (user.name || user.email)[0].toUpperCase() : <UserRound size={20} />}</button>
       </div>
     </header>
     <nav className="tabbar">

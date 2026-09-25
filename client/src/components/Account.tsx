@@ -1,8 +1,8 @@
-import { LogOut, Trash2, UserRound, X } from "lucide-react";
+import { Crown, LogOut, Trash2, UserRound, X } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Link, useLocation, useSearch } from "wouter";
-import { account, deleteAccount, forgotPassword, resetPassword, signIn, signOut, signUp } from "@/lib/account";
+import { account, cancelPremium, deleteAccount, forgotPassword, resetPassword, signIn, signOut, signUp } from "@/lib/account";
 import { myList, useStore } from "@/lib/catalog";
 import { renderGoogleButton } from "@/lib/google";
 
@@ -34,10 +34,16 @@ export function AccountSheet({ onClose, initial = "signin" }: { onClose: () => v
   const body = user ? <>
     <div className="acct-card"><UserRound size={28} /><div><strong>{user.name || user.email}</strong><span>{user.email}</span></div></div>
     <p className="sheet-text">My List ({saved}), Continue watching and your settings are saved to this account. Sign in on your phone, laptop or TV to pick up where you left off.</p>
+    {user.premium ? <div className="acct-premium">
+      <p><Crown size={16} /> <b>Premium</b> {user.renews ? `: your ${user.plan === "annual" ? "yearly" : "monthly"} plan renews automatically.` : `until ${new Date(user.premiumUntil!).toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" })}. It won't renew.`}</p>
+      {user.renews && <button className="acct-link" onClick={() => {
+        if (window.confirm("Cancel your Premium subscription? You won't be charged again, and Premium keeps working until the end of the period you've paid for.")) cancelPremium().then(() => toast("Subscription cancelled. Premium runs to the end of your paid period.")).catch((e) => toast(e.message));
+      }}>Cancel subscription</button>}
+    </div> : <Link href="/premium" className="acct-premium upsell" onClick={onClose}><Crown size={16} /> <span><b>Go Premium</b>: no ads, from R29 a month</span></Link>}
     <div className="sheet-actions">
       <button className="btn btn-light" onClick={() => signOut().then(() => { toast("Signed out"); onClose(); })}><LogOut size={18} /> Sign out</button>
       <button className="btn btn-ghost" onClick={() => {
-        if (window.confirm("Delete your YokoTV account? Your synced list and settings are erased from our server. This can't be undone.")) deleteAccount().then(() => { toast("Account deleted"); onClose(); });
+        if (window.confirm(`Delete your YokoTV account? Your synced list and settings are erased from our server${user.renews ? ", and your Premium subscription stops immediately" : ""}. This can't be undone.`)) deleteAccount().then(() => { toast("Account deleted"); onClose(); });
       }}><Trash2 size={18} /> Delete account</button>
     </div>
   </> : mode === "forgot" ? (sent

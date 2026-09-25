@@ -65,8 +65,41 @@ function loadSecret() {
 }
 const secret = loadSecret();
 
-type UserRow = { id: number; email: string; name: string; pass: string; session_version: number; created_at: number };
-const publicUser = (u: UserRow) => ({ id: u.id, email: u.email, name: u.name, createdAt: u.created_at });
+// Premium (server/payments.ts): paid-up-to time, plan, the Stripe subscription
+// while it renews, and the Stripe customer.
+for (const col of ["premium_until INTEGER", "plan TEXT", "sub_code TEXT", "stripe_customer TEXT"]) {
+  try { db.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch {}
+}
+
+type UserRow = { id: number; email: string; name: string; pass: string; session_version: number; created_at: number; premium_until: number | null; plan: string | null; sub_code: string | null; stripe_customer: string | null };
+export const isPremium = (u: Pick<UserRow, "premium_until"> | null | undefined) => !!u?.premium_until && u.premium_until > Date.now();
+const publicUser = (u: UserRow) => ({
+  id: u.id, email: u.email, name: u.name, createdAt: u.created_at,
+  premium: isPremium(u), premiumUntil: u.premium_until || null, plan: u.plan || null, renews: !!u.sub_code,
+});
+
+export const findUser = (id: number) => db.prepare("SELECT * FROM users WHERE id = ?").get(id) as UserRow | undefined;
+// Premium runs until the end of the period Stripe says is paid (never shortened).
+export function setPremiumUntil(userId: number, until: number, plan: string) {
+  db.prepare("UPDATE users SET premium_until = MAX(COALESCE(premium_until, 0), ?), plan = ? WHERE id = ?").run(until, plan, userId);
+}
+// sub_code is set while a subscription renews; null once it's cancelled (paid time is kept).
+export function setSubscription(userId: number, subscription: string | null) {
+  db.prepare("UPDATE users SET sub_code = ? WHERE id = ?").run(subscription, userId);
+}
+export function endSubscription(subscription: string) {
+  db.prepare("UPDATE users SET sub_code = NULL WHERE sub_code = ?").run(subscription);
+}
+export function setStripeCustomer(userId: number, customer: string) {
+  db.prepare("UPDATE users SET stripe_customer = ? WHERE id = ?").run(customer, userId);
+}
+// Set by server/payments.ts: cancels a subscription when its account is deleted.
+let beforeDelete: (subscription: string) => Promise<unknown> = async () => undefined;
+export function onAccountDelete(fn: (subscription: string) => Promise<unknown>) { beforeDelete = fn; }
+
+export function countPremium() {
+  return (db.prepare("SELECT COUNT(*) n FROM users WHERE premium_until > ?").get(Date.now()) as { n: number }).n;
+}
 
 function hashPassword(password: string) {
   const salt = crypto.randomBytes(16);
@@ -253,6 +286,8 @@ export function registerAccountRoutes(app: Express) {
   app.delete("/api/account", async (req, res) => {
     const user = await currentUser(req);
     if (!user) return void res.status(401).json({ error: "Signed out" });
+    // Stop any Stripe subscription first, so a deleted account is never billed again.
+    if (user.sub_code) await beforeDelete(user.sub_code).catch((e) => console.error("[accounts] cancelling subscription failed", e));
     db.prepare("DELETE FROM users WHERE id = ?").run(user.id);
     res.clearCookie(COOKIE, { path: "/" }).json({ ok: true });
   });

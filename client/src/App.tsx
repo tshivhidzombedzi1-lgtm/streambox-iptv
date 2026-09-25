@@ -15,6 +15,7 @@ import TermsScreen from "./pages/Terms";
 import TvGuideScreen from "./pages/TvGuide";
 import AboutScreen from "./pages/About";
 import AdvertiseScreen from "./pages/Advertise";
+import PremiumScreen from "./pages/Premium";
 import { BrowseScreen, HomeScreen, MyListScreen, SearchScreen, WatchScreen } from "./pages/Screens";
 
 let oneTapShown = false;
@@ -50,6 +51,7 @@ export default function App() {
       <Route path="/tv-guide" component={TvGuideScreen} />
       <Route path="/about" component={AboutScreen} />
       <Route path="/advertise" component={AdvertiseScreen} />
+      <Route path="/premium" component={PremiumScreen} />
       <Route path="/admin" component={AdminScreen} />
       <Route component={NotFound} />
     </Switch>

@@ -23,6 +23,9 @@ export default function PrivacyScreen() {
       <li><b>Deleting:</b> open your account on YokoTV and choose <i>Delete account</i>. Your account and everything synced with it are erased straight away.</li>
     </ul>
 
+    <h2>Payments</h2>
+    <p>Premium subscriptions and support payments are handled by Stripe. You enter your card details on Stripe's secure checkout, not on YokoTV, and we never see or store your card number. Stripe tells us the payment went through, the amount, your email address, and for Premium your subscription's status and renewal date. We keep a record of payments for our accounts and tax, as the law requires. Stripe's own use of your data is covered by <a href="https://stripe.com/privacy" target="_blank" rel="noreferrer">Stripe's privacy policy</a>.</p>
+
     <h2>Audience statistics</h2>
     <p>To see how YokoTV is used, the app counts page views, plays, shares and installs. It sends a random ID made up by your browser (not linked to your name, email or account), the kind of device, your time zone's country, and the site that sent you here. We don't store IP addresses in these statistics, and we only keep daily totals plus the random IDs needed to count unique visitors, for up to 400 days.</p>
 
