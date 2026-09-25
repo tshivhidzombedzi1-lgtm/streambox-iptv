@@ -10,6 +10,7 @@ import { registerAccountRoutes } from "../accounts";
 import { registerAdsRoutes } from "../ads";
 import { registerStatsRoutes } from "../stats";
 import { registerEpgRoutes, startEpg } from "../epg";
+import { registerLiveRoutes } from "../live";
 import { registerStreamProxy } from "../streamProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -49,6 +50,7 @@ async function startServer() {
   registerAdsRoutes(app);
   registerStatsRoutes(app);
   registerEpgRoutes(app);
+  registerLiveRoutes(app);
   registerStreamProxy(app);
   startCatalog();
   startEpg();

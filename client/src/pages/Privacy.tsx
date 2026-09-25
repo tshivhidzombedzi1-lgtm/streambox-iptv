@@ -22,6 +22,9 @@ export default function PrivacyScreen() {
       <li><b>Deleting:</b> open your account on YokoTV and choose <i>Delete account</i>. Your account and everything synced with it are erased straight away.</li>
     </ul>
 
+    <h2>Live chat</h2>
+    <p>Messages you post in a channel's live chat are public to everyone watching that channel, shown with your account name (never your email). Chat isn't saved: each channel keeps only its latest 80 messages in the server's memory, and they disappear when the server restarts. We count how many people are watching each channel using the same random browser ID as the statistics below. Messages with slurs, links or phone numbers are blocked, reported messages are hidden, and people who break the rules can be banned from chat.</p>
+
     <h2>Audience statistics</h2>
     <p>To see how YokoTV is used, the app counts page views, plays, shares and installs. It sends a random ID made up by your browser (not linked to your name, email or account), the kind of device, your time zone's country, and the site that sent you here. We don't store IP addresses in these statistics, and we only keep daily totals plus the random IDs needed to count unique visitors, for up to 400 days.</p>
 
