@@ -1,9 +1,10 @@
 import { LogOut, Trash2, UserRound, X } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Link, useLocation, useSearch } from "wouter";
 import { account, deleteAccount, forgotPassword, resetPassword, signIn, signOut, signUp } from "@/lib/account";
 import { myList, useStore } from "@/lib/catalog";
+import { renderGoogleButton } from "@/lib/google";
 
 type Mode = "signin" | "signup" | "forgot";
 
@@ -50,6 +51,7 @@ export function AccountSheet({ onClose, initial = "signin" }: { onClose: () => v
     </form>)
   : <form className="acct-form" onSubmit={(e) => run(e, () => mode === "signup" ? signUp(form.email, form.password, form.name) : signIn(form.email, form.password), mode === "signup" ? "Welcome to YokoTV! Your list now syncs across devices." : "Signed in")}>
       <p className="sheet-text">{mode === "signup" ? "Free, and optional. An account keeps My List, Continue watching and your settings in sync on every device." : "Sign in to sync My List and Continue watching across your devices."}</p>
+      <GoogleButton />
       {mode === "signup" && <label>Name <em>(optional)</em><input autoComplete="name" maxLength={60} {...field("name")} /></label>}
       <label>Email<input type="email" autoComplete="email" required autoFocus {...field("email")} /></label>
       <label>Password<input type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={mode === "signup" ? 8 : undefined} required {...field("password")} />
@@ -99,4 +101,16 @@ export function ResetScreen() {
       {!token && <p className="acct-error">This link is missing its reset code. Open the link from the email again.</p>}
     </form>
   </div></div>;
+}
+
+// Google's own "Continue with Google" button, with an "or" divider below it.
+// Renders nothing until Google sign-in is configured on the server.
+function GoogleButton() {
+  const el = useRef<HTMLDivElement>(null);
+  const [shown, setShown] = useState(false);
+  useEffect(() => { if (el.current) renderGoogleButton(el.current).then(setShown); }, []);
+  return <div className={`acct-google ${shown ? "on" : ""}`}>
+    <div ref={el} className="acct-google-btn" />
+    {shown && <p className="acct-or"><span>or with email</span></p>}
+  </div>;
 }

@@ -7,7 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import type { Express, Request, Response } from "express";
-import { jwtVerify, SignJWT } from "jose";
+import { createRemoteJWKSet, jwtVerify, SignJWT } from "jose";
 
 const DATA_DIR = path.resolve(process.cwd(), "data");
 const COOKIE = "yk_session";
@@ -40,6 +40,21 @@ db.exec(`
     expires_at INTEGER NOT NULL
   );
 `);
+
+// Accounts created through Google have no password; this marker never matches one.
+const NO_PASSWORD = "!google";
+try { db.exec("ALTER TABLE users ADD COLUMN google_sub TEXT"); } catch {} // added with Google sign-in
+
+// Sign in with Google: the OAuth client ID lives in data/google.json
+// ({ "clientId": "….apps.googleusercontent.com" }); without it the feature is off.
+const GOOGLE_FILE = path.join(DATA_DIR, "google.json");
+const googleKeys = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
+function googleClientId() {
+  try {
+    const id = JSON.parse(fs.readFileSync(GOOGLE_FILE, "utf8")).clientId;
+    return typeof id === "string" && /^[\w-]+\.apps\.googleusercontent\.com$/.test(id.trim()) ? id.trim() : "";
+  } catch { return ""; }
+}
 
 // Signing key: JWT_SECRET if the host sets one, otherwise a random key kept on disk.
 function loadSecret() {
@@ -150,6 +165,44 @@ export function registerAccountRoutes(app: Express) {
     db.prepare("UPDATE users SET last_login = ? WHERE id = ?").run(Date.now(), user.id);
     await setSession(res, user);
     res.json({ user: publicUser(user), data: userData(user.id) });
+  });
+
+  // Which sign-in methods are switched on (the app shows the Google button only if set).
+  app.get("/api/account/config", (_req, res) => {
+    res.set("Cache-Control", "public, max-age=300").json({ googleClientId: googleClientId() });
+  });
+
+  // Google sends the browser a signed ID token; we check it against Google's keys,
+  // then sign in the account with that Google ID or verified email, creating one if needed.
+  app.post("/api/account/google", async (req, res) => {
+    if (limited(req, "google", 30)) return void res.status(429).json({ error: "Too many attempts. Try again later." });
+    const clientId = googleClientId();
+    if (!clientId) return void res.status(404).json({ error: "Google sign-in isn't set up." });
+    let claims: { sub?: string; email?: string; email_verified?: boolean; name?: string };
+    try {
+      const { payload } = await jwtVerify(clean(req.body?.credential, 4000), googleKeys, {
+        issuer: ["https://accounts.google.com", "accounts.google.com"], audience: clientId,
+      });
+      claims = payload as typeof claims;
+    } catch {
+      return void res.status(401).json({ error: "Google sign-in didn't work. Try again." });
+    }
+    const email = (claims.email || "").toLowerCase();
+    if (!claims.sub || !email || claims.email_verified !== true) return void res.status(401).json({ error: "Your Google account needs a verified email address." });
+    let user = (db.prepare("SELECT * FROM users WHERE google_sub = ?").get(claims.sub)
+      || db.prepare("SELECT * FROM users WHERE email = ?").get(email)) as UserRow | undefined;
+    const created = !user;
+    const now = Date.now();
+    if (!user) {
+      const { lastInsertRowid } = db.prepare("INSERT INTO users (email, name, pass, created_at, last_login, google_sub) VALUES (?, ?, ?, ?, ?, ?)")
+        .run(email, clean(claims.name, 60), NO_PASSWORD, now, now, claims.sub);
+      user = db.prepare("SELECT * FROM users WHERE id = ?").get(lastInsertRowid) as UserRow;
+    } else {
+      db.prepare("UPDATE users SET google_sub = ?, last_login = ?, name = CASE WHEN name = '' THEN ? ELSE name END WHERE id = ?").run(claims.sub, now, clean(claims.name, 60), user.id);
+      user = db.prepare("SELECT * FROM users WHERE id = ?").get(user.id) as UserRow;
+    }
+    await setSession(res, user);
+    res.json({ user: publicUser(user), data: userData(user.id), created });
   });
 
   app.post("/api/account/logout", (_req, res) => {

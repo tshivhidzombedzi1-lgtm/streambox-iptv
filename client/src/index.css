@@ -433,3 +433,11 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border: 0; bord
 .tvp-guide em { margin-left: .5rem; padding: 1px 6px; border-radius: 3px; background: var(--live); color: #fff; font-style: normal; font-size: .62rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; vertical-align: 2px; }
 .tvp-guide li p { margin: .2rem 0 0; font-size: .8rem; line-height: 1.4; color: var(--text-3); }
 @media (max-width: 600px) { .tvp-guide { top: 64px; bottom: 84px; } .tvp-title .tvp-now { max-width: 48vw; } }
+
+/* Sign in with Google */
+.acct-google.on { margin-bottom: .4rem; }
+.acct-google-btn { display: flex; justify-content: center; min-height: 0; }
+.acct-google.on .acct-google-btn { min-height: 44px; }
+.acct-or { position: relative; margin: 1rem 0 .9rem; text-align: center; font-size: .78rem; color: var(--text-3); }
+.acct-or::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid var(--line); }
+.acct-or span { position: relative; padding: 0 .7rem; background: var(--surface); }

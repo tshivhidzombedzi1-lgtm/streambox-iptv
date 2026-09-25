@@ -3,6 +3,8 @@
 // everything keeps working from localStorage exactly as before.
 import { myList, recents, type Settings, settings } from "./catalog";
 import { track } from "./growth";
+import { toast } from "sonner";
+import { googleSignedOut, setGoogleHandler } from "./google";
 
 export type User = { id: number; email: string; name: string; createdAt: number };
 type Synced = { myList?: string[]; recents?: string[]; settings?: Partial<Settings> };
@@ -72,8 +74,23 @@ export const forgotPassword = (email: string) => call("POST", "/api/account/forg
 export const resetPassword = async (token: string, password: string) => signedIn(await call("POST", "/api/account/reset", { token, password }));
 export async function signOut() {
   await call("POST", "/api/account/logout");
+  googleSignedOut();
   update({ user: null });
 }
+
+// Google hands the browser a signed credential (button or One Tap); the server
+// checks it with Google and signs in or creates the account.
+setGoogleHandler(async (credential) => {
+  try {
+    const result = await call("POST", "/api/account/google", { credential });
+    signedIn(result);
+    if (result.created) track("signup");
+    toast(`Signed in as ${result.user.name || result.user.email}`);
+  } catch (err) {
+    toast(err instanceof Error ? err.message : "Google sign-in didn't work.");
+  }
+});
+
 export async function deleteAccount() {
   await call("DELETE", "/api/account");
   update({ user: null });

@@ -4,17 +4,28 @@ import { Route, Switch, useLocation } from "wouter";
 import { ResetScreen } from "./components/Account";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Onboarding from "./components/Onboarding";
-import { loadAccount } from "./lib/account";
+import { account, loadAccount } from "./lib/account";
+import { settings, useStore } from "./lib/catalog";
+import { googleOneTap } from "./lib/google";
 import { trackView } from "./lib/growth";
 import AdminScreen from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import PrivacyScreen from "./pages/Privacy";
 import { BrowseScreen, HomeScreen, MyListScreen, SearchScreen, WatchScreen } from "./pages/Screens";
 
+let oneTapShown = false;
+
 export default function App() {
   useEffect(() => { loadAccount(); }, []);
   const [location] = useLocation();
   useEffect(() => { trackView(location); }, [location]);
+  // Google One Tap for signed-out visitors (auto sign-in for returning ones), once per
+  // visit, after onboarding and never on the player.
+  const { user, ready } = useStore(account);
+  const { onboarded } = useStore(settings);
+  useEffect(() => {
+    if (ready && !user && onboarded && !location.startsWith("/watch") && !oneTapShown) { oneTapShown = true; googleOneTap(); }
+  }, [ready, user, onboarded, location]);
   return <ErrorBoundary>
     <Toaster theme="dark" position="bottom-center" />
     <Onboarding />

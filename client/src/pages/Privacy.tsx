@@ -18,6 +18,7 @@ export default function PrivacyScreen() {
     <ul>
       <li><b>What we store:</b> your email address, the name you give (optional), your password in scrambled (hashed) form that we can't read, and your synced My List, Continue watching and settings.</li>
       <li><b>Why:</b> to sign you in and keep your lists the same on every device, and to email you a link if you forget your password. We don't send marketing emails.</li>
+      <li><b>Signing in with Google:</b> Google tells us your name, email address and a Google account ID, and confirms your email is verified. We don't get your Google password or anything else from your Google account. If you're signed in to Google, it may offer to sign you in to YokoTV automatically; signing out of YokoTV stops that.</li>
       <li><b>Sign-in cookie:</b> one cookie keeps you signed in for up to 180 days. It's removed when you sign out.</li>
       <li><b>Deleting:</b> open your account on YokoTV and choose <i>Delete account</i>. Your account and everything synced with it are erased straight away.</li>
     </ul>
