@@ -1,7 +1,7 @@
 import type Hls from "hls.js";
 import type { Level } from "hls.js";
 import {
-  ArrowLeft, CalendarClock, Check, MessageCircle, ChevronDown, ChevronUp, Gauge, List, Loader2, Maximize, Minimize, Pause, PictureInPicture2,
+  ArrowLeft, CalendarClock, Check, ChevronDown, ChevronUp, Gauge, List, Loader2, Maximize, Minimize, Pause, PictureInPicture2,
   Play, RadioTower, RotateCcw, Settings2, SkipForward, Volume1, Volume2, VolumeX,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -9,8 +9,6 @@ import { toast } from "sonner";
 import { ShareButton } from "@/components/Share";
 import { track } from "@/lib/growth";
 import { hhmm, onNow, useGuide, useSchedule } from "@/lib/epg";
-import { useLive } from "@/lib/live";
-import { FloatingReactions, LiveChat, Reactions } from "@/components/LiveChat";
 import { type Channel, connection, isSlowNetwork, isTV, markWatched, settings, streamSrc, useStore } from "@/lib/catalog";
 
 type Source = { src: string; label: string; relayed: boolean };
@@ -76,9 +74,7 @@ export default function TVPlayer({ channel, onBack, onPrev, onNext, onToggleList
   const [needsUnmute, setNeedsUnmute] = useState(false);
   const [controls, setControls] = useState(true);
   const [menu, setMenu] = useState<null | "quality" | "source">(null);
-  // The guide and the chat share the side panel: opening one closes the other.
-  const [panel, setPanel] = useState<null | "guide" | "chat">(null);
-  const live = useLive(channel.id);
+  const [guideOpen, setGuideOpen] = useState(false);
   const { now: onAir, next: upNext } = onNow(useGuide(), channel.id);
   const [levels, setLevels] = useState<Level[]>([]);
   const [level, setLevel] = useState(-1);
@@ -337,18 +333,15 @@ export default function TVPlayer({ channel, onBack, onPrev, onNext, onToggleList
       <button className="tvp-icon" onClick={onBack} aria-label="Back"><ArrowLeft size={24} /></button>
       <div className="tvp-title">
         {channel.l && <img src={channel.l} alt="" />}
-        <div><strong>{channel.n}</strong><span><i className="live-dot" /> LIVE{live.viewers > 1 ? ` · ${live.viewers.toLocaleString()} watching` : ""}{playingHeight ? ` · ${fmtHeight(playingHeight)}` : ""}{saver ? " · Data saver" : ""}</span>
+        <div><strong>{channel.n}</strong><span><i className="live-dot" /> LIVE{playingHeight ? ` · ${fmtHeight(playingHeight)}` : ""}{saver ? " · Data saver" : ""}</span>
           {onAir && <span className="tvp-now"><b>{onAir.t}</b> {hhmm(onAir.s)}–{hhmm(onAir.e)}{upNext && <> · Next {hhmm(upNext.s)} {upNext.t}</>}</span>}</div>
       </div>
-      <button className="tvp-icon" onClick={() => setPanel((p) => (p === "chat" ? null : "chat"))} aria-label="Live chat"><MessageCircle size={21} /></button>
-      {(onAir || upNext) && <button className="tvp-icon" onClick={() => setPanel((p) => (p === "guide" ? null : "guide"))} aria-label="TV guide"><CalendarClock size={21} /></button>}
+      {(onAir || upNext) && <button className="tvp-icon" onClick={() => setGuideOpen((o) => !o)} aria-label="TV guide"><CalendarClock size={21} /></button>}
       <ShareButton channel={channel} className="tvp-icon" label={false} size={21} />
       <button className="tvp-icon" onClick={onToggleList} aria-label="Channel list"><List size={22} /></button>
     </div>
 
-    {panel === "guide" && <GuidePanel id={channel.id} name={channel.n} onClose={() => setPanel(null)} />}
-    {panel === "chat" && <LiveChat name={channel.n} viewers={live.viewers} messages={live.messages} send={live.send} report={live.report} moderate={live.moderate} onClose={() => setPanel(null)} />}
-    <FloatingReactions bursts={live.bursts} />
+    {guideOpen && <GuidePanel id={channel.id} name={channel.n} onClose={() => setGuideOpen(false)} />}
     {busy && <div className="tvp-center"><Loader2 className="spin" size={46} /><p>{phase === "switching" ? "Switching to a backup stream…" : phase === "buffering" ? "Buffering…" : "Tuning in…"}</p></div>}
     {phase === "paused" && !busy && <button className="tvp-bigplay" onClick={togglePlay} aria-label="Play" autoFocus={isTV}><Play size={38} fill="currentColor" /></button>}
     {phase === "failed" && <div className="tvp-center tvp-failed">
@@ -360,7 +353,6 @@ export default function TVPlayer({ channel, onBack, onPrev, onNext, onToggleList
     {needsUnmute && phase === "playing" && <button className="tvp-unmute" onClick={toggleMute}><VolumeX size={18} /> Tap to unmute</button>}
 
     <div className="tvp-bottom">
-      {!isTV && <Reactions react={live.react} />}
       <div className="tvp-row">
         <button ref={playButton} className="tvp-icon" onClick={togglePlay} aria-label={phase === "playing" ? "Pause" : "Play"}>{phase === "playing" || phase === "buffering" ? <Pause size={26} fill="currentColor" /> : <Play size={26} fill="currentColor" />}</button>
         <button className="tvp-icon" onClick={onPrev} aria-label="Previous channel"><ChevronUp size={24} /></button>

@@ -433,30 +433,3 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border: 0; bord
 .tvp-guide em { margin-left: .5rem; padding: 1px 6px; border-radius: 3px; background: var(--live); color: #fff; font-style: normal; font-size: .62rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; vertical-align: 2px; }
 .tvp-guide li p { margin: .2rem 0 0; font-size: .8rem; line-height: 1.4; color: var(--text-3); }
 @media (max-width: 600px) { .tvp-guide { top: 64px; bottom: 84px; } .tvp-title .tvp-now { max-width: 48vw; } }
-
-/* live chat, viewer count and reactions */
-.tvp-chat { position: absolute; top: 76px; right: 12px; bottom: 96px; z-index: 6; width: 360px; max-width: calc(100vw - 24px); display: flex; flex-direction: column; border-radius: 12px; background: rgba(12,13,18,.94); border: 1px solid var(--line); box-shadow: 0 20px 60px rgba(0,0,0,.6); }
-.tvp-chat-count { margin-left: .5rem; font-family: "DM Sans", sans-serif; font-size: .74rem; font-weight: 600; color: var(--text-2); }
-.tvp-chat-count .live-dot { width: 6px; height: 6px; margin-right: 3px; }
-.tvp-chat-list { flex: 1; margin: 0; padding: .5rem .9rem; list-style: none; overflow-y: auto; }
-.tvp-chat-list li { position: relative; padding: .35rem 2.6rem .35rem 0; font-size: .9rem; line-height: 1.4; word-wrap: break-word; }
-.tvp-chat-list li b { color: var(--accent-2); margin-right: .25rem; }
-.tvp-chat-list li span { color: #e4e5eb; }
-.tvp-chat-list .tvp-chat-empty { padding: 1rem 0; color: var(--text-3); }
-.tvp-chat-tools { position: absolute; top: .3rem; right: 0; display: none; }
-.tvp-chat-list li:hover .tvp-chat-tools, .tvp-chat-list li:focus-within .tvp-chat-tools { display: flex; }
-.tvp-chat-tools button { display: grid; place-items: center; width: 22px; height: 22px; margin-left: 2px; border-radius: 4px; color: var(--text-3); }
-.tvp-chat-tools button:hover { color: #fff; background: rgba(255,255,255,.1); }
-.tvp-chat-form { display: flex; align-items: center; padding: .6rem .7rem; border-top: 1px solid var(--line); }
-.tvp-chat-form input { flex: 1; min-width: 0; height: 40px; margin-right: .4rem; padding: 0 .8rem; border-radius: 20px; border: 1px solid var(--input); background: var(--bg); color: #fff; font-size: .95rem; }
-.tvp-chat-form input:focus { outline: none; border-color: var(--accent-2); }
-.tvp-chat-rules { margin: 0; padding: 0 .9rem .6rem; font-size: .7rem; color: var(--text-3); }
-.tvp-reactions { display: flex; justify-content: center; margin-bottom: .6rem; }
-.tvp-reactions button { width: 40px; height: 40px; margin: 0 3px; border-radius: 50%; background: rgba(0,0,0,.35); font-size: 1.25rem; line-height: 40px; transition: transform .12s; }
-.tvp-reactions button:hover { transform: scale(1.18); background: rgba(255,255,255,.12); }
-.tvp-reactions button:active { transform: scale(.9); }
-.tvp-floats { position: absolute; left: 0; right: 0; bottom: 110px; height: 60%; z-index: 3; pointer-events: none; overflow: hidden; }
-.tvp-floats span { position: absolute; bottom: 0; font-size: 2rem; opacity: 0; animation: floatUp 2.6s ease-out forwards; }
-@keyframes floatUp { 0% { opacity: 0; transform: translateY(0) scale(.6); } 12% { opacity: 1; transform: translateY(-20px) scale(1.1); } 100% { opacity: 0; transform: translateY(-340px) scale(1); } }
-.tv .tvp-floats { display: none; }
-@media (max-width: 600px) { .tvp-chat { top: auto; bottom: 150px; height: 45%; width: auto; left: 12px; } .tvp-reactions button { width: 36px; height: 36px; line-height: 36px; font-size: 1.1rem; } }
