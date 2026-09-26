@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The WebView is added in code (MainActivity) at the bottom of this frame, so a
+     missing or updating System WebView can't crash the layout. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/yoko_bg">
+
+    <LinearLayout
+        android:id="@+id/offline"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="88dp"
+            android:layout_height="88dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/yokotv_mark" />
+
+        <TextView
+            android:id="@+id/offline_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:gravity="center"
+            android:text="@string/offline_title"
+            android:textColor="@color/yoko_text"
+            android:textSize="26sp" />
+
+        <TextView
+            android:id="@+id/offline_body"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center"
+            android:lineSpacingMultiplier="1.2"
+            android:maxWidth="440dp"
+            android:text="@string/offline_body"
+            android:textColor="@color/yoko_text_2"
+            android:textSize="16sp" />
+
+        <Button
+            android:id="@+id/retry"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginTop="28dp"
+            android:background="@drawable/btn_retry"
+            android:minWidth="168dp"
+            android:paddingLeft="28dp"
+            android:paddingRight="28dp"
+            android:stateListAnimator="@null"
+            android:text="@string/retry"
+            android:textAllCaps="false"
+            android:textColor="@color/yoko_button_text"
+            android:textSize="16sp" />
+    </LinearLayout>
+</FrameLayout>

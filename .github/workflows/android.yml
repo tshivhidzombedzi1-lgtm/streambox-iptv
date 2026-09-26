@@ -1,0 +1,81 @@
+# Builds the YokoTV Android app (TV + phone) in android/ and uploads the APK.
+# With the signing secrets set (see android/README.md) it builds a signed release
+# APK; without them, a debug APK that can still be sideloaded for testing.
+name: Android app
+
+on:
+  push:
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
+  pull_request:
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android
+    env:
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE != '' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # Caches Gradle and checks gradle-wrapper.jar against Gradle's published checksums.
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Restore the signing key
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+        run: |
+          echo "$ANDROID_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/yokotv-upload.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/yokotv-upload.jks" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/yokotv.apk"
+
+      - name: Build debug APK (no signing secrets set)
+        if: env.HAS_KEYSTORE != 'true'
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/yokotv.apk"
+
+      - name: Remove the signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/yokotv-upload.jks"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: yokotv-android-${{ env.HAS_KEYSTORE == 'true' && 'release' || 'debug' }}-${{ github.run_number }}
+          path: ${{ runner.temp }}/yokotv.apk
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: lint-report-${{ github.run_number }}
+          path: android/app/build/reports/lint-results-*.html
+          if-no-files-found: ignore

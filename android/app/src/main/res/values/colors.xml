@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YokoTV design tokens (client/src/index.css). -->
+<resources>
+    <color name="yoko_bg">#08090D</color>
+    <color name="yoko_tile">#0B0D12</color>
+    <color name="yoko_surface">#14151B</color>
+    <color name="yoko_text">#ECECF1</color>
+    <color name="yoko_text_2">#A4A6B3</color>
+    <color name="yoko_accent">#6C8CFF</color>
+    <color name="yoko_accent_2">#5EC8FF</color>
+    <color name="yoko_mark_start">#5EC8FF</color>
+    <color name="yoko_mark_end">#6C6BF5</color>
+    <color name="yoko_button_text">#0B0B10</color>
+</resources>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">YokoTV</string>
+    <string name="offline_title">Can\'t reach YokoTV</string>
+    <string name="offline_body">Check your internet connection and try again.</string>
+    <string name="server_body">YokoTV isn\'t responding right now. Please try again in a moment.</string>
+    <string name="webview_body">This device\'s web component (Android System WebView) is missing or updating. Update it from the store, then try again.</string>
+    <string name="retry">Retry</string>
+    <string name="retrying">Connecting…</string>
+    <string name="press_back_again">Press back again to exit</string>
+    <string name="open_on_phone">Open %1$s on your phone or computer</string>
+    <string name="no_app_for_link">No app on this device can open that link</string>
+</resources>

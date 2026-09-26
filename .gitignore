@@ -119,3 +119,9 @@ data/
 *.bak-*
 dist.*/
 tmp/
+
+# Android signing keys: never commit (the repo is public)
+*.jks
+*.keystore
+*.b64
+local.properties
