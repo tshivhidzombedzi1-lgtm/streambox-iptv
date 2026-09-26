@@ -98,6 +98,13 @@ export const qualityTag = (ch: Channel) => {
 // and lets the D-pad move focus instead of seeking.
 export const isTV = /smart-?tv|tizen|web0s|webos|netcast|hbbtv|bravia|vidaa|hisense|philipstv|roku|crkey|googletv|android tv|\bAFT[A-Z]|opera tv|; ?tv\b|\bdtv\b|aquos|viera|xbox|playstation/i.test(navigator.userAgent);
 
+// ---- the YokoTV Android app (phone and TV) ----
+// The app wraps this site in a WebView and adds "YokoTVApp/<version>" to the
+// user agent (plus "Android TV" on TVs, which turns on isTV above). Google
+// sign-in, AdSense and the PWA install button don't work in WebViews, and
+// Premium is bought on the website, so those are hidden in the app.
+export const isApp = /YokoTVApp\//.test(navigator.userAgent);
+
 // ---- network awareness ----
 type NetInfo = { saveData?: boolean; effectiveType?: string; downlink?: number; addEventListener?: (t: string, f: () => void) => void };
 export function connection(): NetInfo | undefined {

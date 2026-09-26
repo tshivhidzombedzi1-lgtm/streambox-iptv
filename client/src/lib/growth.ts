@@ -1,6 +1,6 @@
 // Growth plumbing: anonymous stats beacons (server/stats.ts), sharing with
 // WhatsApp first, and the "Install app" prompt for the PWA.
-import { type Channel, guessCountry, isTV } from "./catalog";
+import { type Channel, guessCountry, isApp, isTV } from "./catalog";
 
 // ---- anonymous stats ----
 function visitorId() {
@@ -71,7 +71,9 @@ export const install = { get: () => state, subscribe(l: () => void) { listeners.
 
 export function setupInstall() {
   const standalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
-  if (standalone || isTV) { update({ installed: standalone }); return; }
+  // The Android app is already installed, and skips the service worker so its own
+  // offline screen (with Retry) shows instead of a cached page.
+  if (standalone || isTV || isApp) { update({ installed: standalone || isApp }); return; }
   // iPhone/iPad Safari never fires beforeinstallprompt; we show "Add to Home Screen" steps instead.
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !/crios|fxios/i.test(navigator.userAgent);
   update({ ios });

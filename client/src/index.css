@@ -652,6 +652,8 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border: 0; bord
 .pricing-member > div { flex: 1; }
 .pricing-member p { margin: .25rem 0 0; color: var(--text-2); }
 .pricing-member .loader { flex: none; width: 32px; height: 32px; }
+.pricing-web { margin-top: 1.4rem; border-color: rgba(108,140,255,.35); }
+.pricing-web img { flex: none; width: 132px; height: 132px; padding: 6px; border-radius: 14px; background: #fff; }
 .trust { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem 1.8rem; margin: 1.6rem 0 2.4rem; padding: 0; list-style: none; color: var(--text-2); font-size: .88rem; }
 .trust li { display: inline-flex; align-items: center; gap: .45rem; }
 .trust svg { color: var(--accent-2); }

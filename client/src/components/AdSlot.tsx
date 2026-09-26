@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { account } from "@/lib/account";
-import { isTV, useStore } from "@/lib/catalog";
+import { isApp, isTV, useStore } from "@/lib/catalog";
 
 // An ad spot. A direct sponsor booked for this spot (server/sponsors.ts) comes
 // first; otherwise Google AdSense fills it (configured in data/ads.json, see
 // server/ads.ts). TVs get sponsor banners but never AdSense: its script slows
-// weak TV browsers down and its ads can't be used with a remote. Premium members
-// see no ads at all.
+// weak TV browsers down and its ads can't be used with a remote. The Android app
+// gets sponsors but no AdSense either (AdSense isn't allowed in WebView apps).
+// Premium members see no ads at all.
 type AdsConfig = { client: string; slots: Record<string, string> };
 type SponsorAd = { id: string; image: string; alt: string; slots: string[] };
 let config: Promise<AdsConfig> | null = null;
@@ -54,7 +55,7 @@ function injectScript(client: string) {
 export function useAds() {
   const premium = !!useStore(account).user?.premium;
   useEffect(() => {
-    if (isTV || premium) return;
+    if (isTV || isApp || premium) return;
     loadConfig().then((c) => { if (c.client) addScript(c.client); });
   }, [premium]);
 }
@@ -73,7 +74,7 @@ export default function AdSlot({ name }: { name: "home" | "browse" | "guide" }) 
       if (!live) return;
       // Several sponsors on one spot share it: one is picked at random per view.
       if (booked.length) return setFill({ kind: "sponsor", ad: booked[Math.floor(Math.random() * booked.length)] });
-      if (isTV) return;
+      if (isTV || isApp) return;
       const c = await loadConfig();
       if (live && c.client && c.slots[name]) setFill({ kind: "adsense", client: c.client, slot: c.slots[name] });
     });

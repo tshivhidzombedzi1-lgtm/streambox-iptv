@@ -1,7 +1,8 @@
 // Sign in with Google (Google Identity Services): the "Continue with Google"
 // button and One Tap, which signs returning visitors in automatically. Off
-// until the server has an OAuth client ID (data/google.json).
-import { isTV } from "./catalog";
+// until the server has an OAuth client ID (data/google.json). Also off on TVs
+// and in the Android app, where Google blocks sign-in inside WebViews.
+import { isApp, isTV } from "./catalog";
 
 type Gis = {
   initialize: (o: Record<string, unknown>) => void;
@@ -20,7 +21,7 @@ export function loadGoogle(): Promise<string> {
   if (!ready) {
     ready = fetch("/api/account/config").then((r) => r.json()).then((c: { googleClientId?: string }) => {
       const clientId = c.googleClientId || "";
-      if (!clientId || isTV) return "";
+      if (!clientId || isTV || isApp) return "";
       return new Promise<string>((resolve) => {
         const done = () => {
           gis()?.initialize({

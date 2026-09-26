@@ -1,11 +1,11 @@
-import { Check, Crown, Heart, Lock, Minus, RotateCcw, ShieldCheck } from "lucide-react";
+import { Check, Crown, ExternalLink, Heart, Lock, Minus, RotateCcw, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Link, useSearch } from "wouter";
 import { AccountSheet } from "@/components/Account";
 import { Shell } from "@/pages/Screens";
 import { account, refreshAccount } from "@/lib/account";
-import { useCatalog, useStore } from "@/lib/catalog";
+import { isApp, isTV, useCatalog, useStore } from "@/lib/catalog";
 
 type PayConfig = { open: boolean; testMode: boolean; prices: { monthly: number; annual: number }; tips: number[] };
 const rand = (n: number) => `R${n.toLocaleString("en-ZA")}`;
@@ -16,6 +16,24 @@ async function startCheckout(body: object) {
   const j = await res.json().catch(() => ({}));
   if (!res.ok || !j.url) throw new Error(j.error || "Couldn't start the payment.");
   window.location.href = j.url; // Stripe's secure checkout page
+}
+
+// In the Android app, payments are made on the website (app store rules), with the
+// same account. Phones open the browser through the app's bridge; TVs, and builds
+// that don't allow it, show the address and a QR code instead.
+const WEB_PREMIUM = "https://yokotv.online/premium";
+function openWebsite() {
+  const bridge = (window as unknown as { YokoTVApp?: { openInBrowser?: (url: string) => boolean } }).YokoTVApp;
+  try { return !isTV && !!bridge?.openInBrowser?.(`${WEB_PREMIUM}?source=android`); } catch { return false; }
+}
+
+function WebHandoff({ onClose }: { onClose: () => void }) {
+  return <section className="glass pricing-member pricing-web" role="dialog" aria-label="Continue on the YokoTV website">
+    <img src="/brand/qr-premium.svg" alt="QR code for yokotv.online/premium" width={132} height={132} />
+    <div><h2>Continue at yokotv.online/premium</h2>
+      <p>Payments are made on the YokoTV website. {isTV ? "Scan the code with your phone, or open the address in any browser." : "Open the address in your browser."} Sign in there with the same account, and Premium switches on in the app too.</p></div>
+    <button className="btn btn-light" onClick={onClose} autoFocus>Done</button>
+  </section>;
 }
 
 // Free vs Premium, in both columns: [feature, free, premium].
@@ -47,6 +65,7 @@ export default function PremiumScreen() {
   const [busy, setBusy] = useState("");
   const [signin, setSignin] = useState(false);
   const [waiting, setWaiting] = useState(params.get("paid") === "premium");
+  const [handoff, setHandoff] = useState(false);
 
   useEffect(() => { fetch("/api/pay/config", { credentials: "same-origin" }).then((r) => r.json()).then(setCfg).catch(() => undefined); }, [user?.id]);
   useEffect(() => {
@@ -63,12 +82,21 @@ export default function PremiumScreen() {
     }, 3000);
     return () => window.clearInterval(t);
   }, [waiting]);
+  // App: coming back from paying in the browser picks up Premium straight away.
+  useEffect(() => {
+    if (!isApp) return;
+    const check = () => { if (document.visibilityState === "visible") refreshAccount().catch(() => undefined); };
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("yokotvapp:resume", check);
+    return () => { document.removeEventListener("visibilitychange", check); window.removeEventListener("yokotvapp:resume", check); };
+  }, []);
 
   const go = async (key: string, body: object) => {
+    if (isApp) { if (!openWebsite()) setHandoff(true); return; }
     setBusy(key);
     try { await startCheckout(body); } catch (e) { toast((e as Error).message); setBusy(""); }
   };
-  const buyPremium = () => (user ? go("premium", { kind: "premium", plan }) : setSignin(true));
+  const buyPremium = () => (user || isApp ? go("premium", { kind: "premium", plan }) : setSignin(true));
   const prices = cfg?.prices || { monthly: 29, annual: 249 };
   const saving = Math.round(100 - (prices.annual / (prices.monthly * 12)) * 100);
   const open = !!cfg?.open;
@@ -108,12 +136,14 @@ export default function PremiumScreen() {
           <p className="price"><strong>{rand(plan === "annual" ? prices.annual : prices.monthly)}</strong><span>/ {plan === "annual" ? "year" : "month"}</span></p>
           <p className="price-sub">{plan === "annual" ? `About ${rand(Math.round(prices.annual / 12))} a month, billed yearly.` : "Billed monthly. Cancel any time."}</p>
           <ul>{COMPARE.map(([f, , prem]) => <li key={f}>{prem ? <Check size={17} /> : <Minus size={17} />}{f}</li>)}</ul>
-          {open ? <button className="btn btn-premium btn-block" disabled={!!busy} onClick={buyPremium}>{busy === "premium" ? "Opening secure checkout…" : user ? "Get Premium" : "Sign in to get Premium"}</button>
+          {open ? <button className="btn btn-premium btn-block" disabled={!!busy} onClick={buyPremium}>{isApp ? <>Get Premium on yokotv.online <ExternalLink size={16} /></> : busy === "premium" ? "Opening secure checkout…" : user ? "Get Premium" : "Sign in to get Premium"}</button>
             : <p className="price-soon">Premium opens soon.</p>}
           {open && cfg?.testMode && <p className="price-test">Test mode: only admins see this, and no real money is charged.</p>}
         </section>
       </div>
     </>}
+
+    {handoff && <WebHandoff onClose={() => setHandoff(false)} />}
 
     <ul className="trust">
       <li><Lock size={16} /> Secure checkout by Stripe</li>
@@ -127,7 +157,7 @@ export default function PremiumScreen() {
         <div className="segmented small" role="radiogroup" aria-label="Amount">
           {(cfg?.tips || [20, 50, 100]).map((n) => <button key={n} role="radio" aria-checked={tip === n} className={tip === n ? "on" : ""} onClick={() => setTip(n)}>{rand(n)}</button>)}
         </div>
-        {open ? <button className="btn btn-light" disabled={!!busy} onClick={() => go("tip", { kind: "tip", amount: tip })}>{busy === "tip" ? "Opening…" : `Give ${rand(tip)}`}</button>
+        {open ? <button className="btn btn-light" disabled={!!busy} onClick={() => go("tip", { kind: "tip", amount: tip })}>{busy === "tip" ? "Opening…" : `Give ${rand(tip)}`}{isApp && <ExternalLink size={15} />}</button>
           : <span className="price-soon">Opens soon</span>}
       </div>
     </section>

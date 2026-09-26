@@ -2,7 +2,7 @@ import { Download, Link2, Share2, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Channel } from "@/lib/catalog";
-import { useStore } from "@/lib/catalog";
+import { isApp, useStore } from "@/lib/catalog";
 import { install, nativeShare, promptInstall, shareText, shareTo, shareUrl, track } from "@/lib/growth";
 
 export function ShareSheet({ channel, onClose }: { channel: Channel | null; onClose: () => void }) {
@@ -38,10 +38,11 @@ export function ShareButton({ channel, className = "", label = true, size = 20 }
   </>;
 }
 
+// The PWA install button; hidden in the Android app, which is already installed.
 export function InstallButton() {
   const { canInstall, ios, installed } = useStore(install);
   const [tips, setTips] = useState(false);
-  if (installed || (!canInstall && !ios)) return null;
+  if (isApp || installed || (!canInstall && !ios)) return null;
   const onClick = async () => {
     if (canInstall) { if (await promptInstall()) toast("YokoTV is on your home screen."); }
     else setTips(true);

@@ -169,8 +169,9 @@ function notFound(p: string): Page {
 }
 
 // AdSense wants its script in the page <head> (that is how it verifies the site).
-// Left out on the player, so ads never cover a channel, and on TVs, which can't use them.
-const TV_UA = /smart-?tv|tizen|web0s|webos|netcast|hbbtv|bravia|vidaa|hisense|philipstv|roku|crkey|googletv|android tv|\bAFT[A-Z]|opera tv/i;
+// Left out on the player, so ads never cover a channel, on TVs, which can't use them,
+// and in the YokoTV Android app ("YokoTVApp/" in its user agent), where AdSense isn't allowed.
+const TV_UA = /smart-?tv|tizen|web0s|webos|netcast|hbbtv|bravia|vidaa|hisense|philipstv|roku|crkey|googletv|android tv|\bAFT[A-Z]|opera tv|YokoTVApp\//i;
 function adsScript(req: Request, page: Page) {
   const { client } = readAdsConfig();
   if (!client || page.path.startsWith("/watch/") || TV_UA.test(req.headers["user-agent"] || "")) return "";
