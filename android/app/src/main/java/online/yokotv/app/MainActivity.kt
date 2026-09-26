@@ -469,6 +469,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 @Deprecated("Android 5 and 6 only")
+                @Suppress("OVERRIDE_DEPRECATION")
                 override fun shouldOverrideUrlLoading(v: WebView, url: String): Boolean {
                     take(url.toUri())
                     return true
