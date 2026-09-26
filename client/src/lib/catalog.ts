@@ -3,7 +3,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 export type Stream = { u: string; q: number; p: 0 | 1; ua?: string; r?: string; ms: number; g?: string };
 // s: streams, only sent up front for the home page picks; the player loads the rest
 // with loadStreams(). q: best quality; gl: countries it plays in (all streams geo-locked).
-export type Channel = { id: string; n: string; c: string; k: string[]; l?: string; s?: Stream[]; sc: number; q?: number; gl?: string[] };
+export type Channel = { id: string; n: string; c: string; k: string[]; l?: string; s?: Stream[]; sc?: number; q?: number; gl?: string[] };
 export type Catalog = { builtAt: string; checked: number; alive: number; picks: string[]; countries: Record<string, string>; channels: Channel[] };
 
 export const CATEGORIES: { id: string; label: string }[] = [

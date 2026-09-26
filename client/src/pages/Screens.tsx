@@ -23,10 +23,23 @@ export function Shell({ catalog, children }: { catalog: Catalog | null; children
 }
 
 function Loading({ error }: { error: boolean }) {
-  return <div className="state">{error ? <><RadioTower size={36} /><h2>Can’t reach the channel guide</h2><p>Check your connection and refresh the page.</p></> : <><div className="loader" /><p>Loading channels…</p></>}</div>;
+  return <div className="state full">{error ? <><RadioTower size={36} /><h2>Can’t reach the channel guide</h2><p>Check your connection and refresh the page.</p></> : <><div className="loader" /><p>Loading channels…</p></>}</div>;
 }
 
 // ---------------- Home ----------------
+
+// What everyone's watching right now (anonymous play counts), fetched as soon as the
+// app starts, alongside the channel list. Gives up after 2.5 s rather than hold the page.
+let trendingIds: string[] | null = null;
+let trendingLoad: Promise<string[]> | null = null;
+function loadTrending() {
+  trendingLoad ||= Promise.race([
+    fetch("/api/trending").then((r) => r.json()).then((j) => (j.ids || []) as string[]),
+    new Promise<string[]>((r) => setTimeout(() => r([]), 2500)),
+  ]).catch(() => []).then((ids) => (trendingIds = ids));
+  return trendingLoad;
+}
+if (window.location.pathname === "/" || window.location.pathname === "/home") loadTrending();
 
 function HeroPreview({ channel }: { channel: Channel }) {
   const ref = useRef<HTMLVideoElement>(null);
@@ -112,10 +125,10 @@ export function HomeScreen() {
     const hero = picks.filter((p) => p.l).slice(0, 6);
     return { picks, local, country, byCat, hero: hero.length ? hero : all.slice(0, 6) };
   }, [catalog, prefs.country, prefs.genres]);
-  // What everyone's watching right now (from anonymous play counts).
-  const [trending, setTrending] = useState<string[]>([]);
-  useEffect(() => { fetch("/api/trending").then((r) => r.json()).then((j) => setTrending(j.ids || [])).catch(() => undefined); }, []);
-  if (!catalog || !rails) return <Shell catalog={catalog}><Loading error={error} /></Shell>;
+  const [trending, setTrending] = useState<string[] | null>(trendingIds);
+  useEffect(() => { if (!trending) loadTrending().then(setTrending); }, []);
+  // Wait for the (tiny) trending list too, so its row never pops in and shifts the page.
+  if (!catalog || !rails || !trending) return <Shell catalog={catalog}><Loading error={error} /></Shell>;
   const pick = (ids: string[]) => ids.map(getChannel).filter(Boolean) as Channel[];
   const hot = pick(trending);
   return <Shell catalog={catalog}>

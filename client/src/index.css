@@ -144,8 +144,9 @@ a.rail-title:hover span { opacity: 1; transform: none; }
 /* cards */
 .card { position: relative; min-width: 0; }
 /* 16:9 via padding, not aspect-ratio: TV browsers before Chromium 88 would give these boxes zero height. */
-.card.skeleton { height: 0; padding-top: 56.25%; border-radius: 6px; background: linear-gradient(100deg, var(--surface) 30%, var(--surface-2) 50%, var(--surface) 70%); background-size: 300% 100%; animation: shimmer 1.4s infinite; }
-@keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.card.skeleton { height: 0; padding-top: 56.25%; border-radius: 6px; background: var(--surface-2); animation: skeleton 1.2s ease-in-out infinite alternate; }
+/* Opacity only, so the GPU runs it (dozens of placeholders load at once on the home page). */
+@keyframes skeleton { from { opacity: .45; } to { opacity: 1; } }
 .card-link { position: relative; display: block; height: 0; padding-top: 56.25%; border-radius: 6px; overflow: hidden; background: var(--surface); transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s; }
 .card-link:hover, .card-link:focus-visible { transform: scale(1.05); box-shadow: 0 14px 40px rgba(0,0,0,.6), 0 0 0 2px rgba(255,255,255,.85); z-index: 2; }
 .art { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at 30% 20%, hsl(var(--h) 55% 30%), hsl(var(--h) 45% 13%) 75%); }
@@ -208,6 +209,7 @@ select { min-width: 200px; cursor: pointer; }
 .state h2 { color: var(--text); font-size: 1.5rem; }
 .state p { margin: 0; max-width: 420px; }
 .state.small { min-height: 30vh; }
+.state.full { min-height: 100vh; }
 .loader { width: 44px; height: 44px; border-radius: 50%; border: 3px solid rgba(255,255,255,.12); border-top-color: var(--accent-2); animation: spin .8s linear infinite; }
 .foot { display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; padding: 2.5rem var(--gutter) 3rem; border-top: 1px solid var(--line); color: var(--text-3); font-size: .82rem; }
 .foot span:first-child { color: var(--text-2); font-weight: 700; }

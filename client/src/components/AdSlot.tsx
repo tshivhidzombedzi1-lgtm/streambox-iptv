@@ -22,14 +22,14 @@ function loadSponsors() {
   return sponsors;
 }
 
-// Ads load after the page is up: on the first scroll/tap/key, or a few seconds in,
+// Ads load after the page is up: on the first scroll/tap/key, or 15 seconds in,
 // so they never hold back the first paint.
 let idle: Promise<void> | null = null;
 function afterFirstPaint() {
   if (!idle) idle = new Promise<void>((resolve) => {
     const go = () => resolve();
     for (const e of ["scroll", "pointerdown", "keydown", "touchstart"]) window.addEventListener(e, go, { once: true, passive: true });
-    const later = () => window.setTimeout(go, 4000);
+    const later = () => window.setTimeout(go, 15000);
     if (document.readyState === "complete") later(); else window.addEventListener("load", later, { once: true });
   });
   return idle;

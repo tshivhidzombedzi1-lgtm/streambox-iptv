@@ -91,7 +91,7 @@ function setCatalog(next: Catalog) {
   catalogGzip = zlib.gzipSync(Buffer.from(JSON.stringify(next)), { level: 9 });
   streamsById.clear();
   const picks = new Set(next.picks);
-  const channels = next.channels.map(({ s, lg: _lg, en: _en, ...c }) => {
+  const channels = next.channels.map(({ s, lg: _lg, en: _en, sc: _sc, ...c }) => {
     streamsById.set(c.id, s);
     const gl = s.every((x) => x.g) ? Array.from(new Set(s.map((x) => x.g!))) : undefined;
     return { ...c, q: Math.max(0, ...s.map((x) => x.q || 0)), ...(gl ? { gl } : {}), ...(picks.has(c.id) ? { s } : {}) };
