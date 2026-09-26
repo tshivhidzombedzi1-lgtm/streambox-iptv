@@ -1,7 +1,9 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 
 export type Stream = { u: string; q: number; p: 0 | 1; ua?: string; r?: string; ms: number; g?: string };
-export type Channel = { id: string; n: string; c: string; k: string[]; l?: string; s: Stream[]; sc: number };
+// s: streams, only sent up front for the home page picks; the player loads the rest
+// with loadStreams(). q: best quality; gl: countries it plays in (all streams geo-locked).
+export type Channel = { id: string; n: string; c: string; k: string[]; l?: string; s?: Stream[]; sc: number; q?: number; gl?: string[] };
 export type Catalog = { builtAt: string; checked: number; alive: number; picks: string[]; countries: Record<string, string>; channels: Channel[] };
 
 export const CATEGORIES: { id: string; label: string }[] = [
@@ -48,7 +50,7 @@ function load(): Promise<Catalog> {
   if (!pending) {
     pending = (async () => {
       for (let attempt = 0; ; attempt++) {
-        const res = await fetch("/api/catalog");
+        const res = await fetch("/api/catalog/lite");
         if (res.ok) {
           const data = localise((await res.json()) as Catalog);
           cache = data;
@@ -87,7 +89,7 @@ export function streamSrc(stream: Stream, forceProxy = false) {
 }
 
 export const qualityTag = (ch: Channel) => {
-  const q = Math.max(...ch.s.map((s) => s.q));
+  const q = ch.q ?? Math.max(0, ...(ch.s || []).map((s) => s.q));
   return q >= 2000 ? "4K" : q >= 1080 ? "FHD" : q >= 720 ? "HD" : q > 0 ? "SD" : "";
 };
 
@@ -174,9 +176,21 @@ export function markWatched(id: string) {
 function localise(data: Catalog): Catalog {
   const here = locationCountry();
   const channels = data.channels
-    .map((c) => (c.s.some((s) => s.g) ? { ...c, s: c.s.filter((s) => !s.g || s.g === here) } : c))
-    .filter((c) => c.s.length);
+    .filter((c) => !c.gl || c.gl.includes(here))
+    .map((c) => (c.s?.some((s) => s.g) ? { ...c, s: c.s.filter((s) => !s.g || s.g === here) } : c));
   return { ...data, channels, picks: data.picks.filter((id) => channels.some((c) => c.id === id)) };
+}
+
+// A channel's streams, fetched when the player opens it (geo-locked ones only
+// kept for viewers in that country, as above).
+export async function loadStreams(ch: Channel): Promise<Stream[]> {
+  if (ch.s?.length) return ch.s;
+  const res = await fetch(`/api/streams/${encodeURIComponent(ch.id)}`);
+  if (!res.ok) throw new Error("Couldn't load this channel.");
+  const here = locationCountry();
+  const s = ((await res.json()).s as Stream[]).filter((x) => !x.g || x.g === here);
+  ch.s = s;
+  return s;
 }
 
 export const dataSaverActive = () => settings.get().dataSaver || isSlowNetwork();

@@ -68,6 +68,12 @@ export type Catalog = { v: 2; builtAt: string; checked: number; alive: number; p
 
 let catalog: Catalog | null = null;
 let catalogGzip: Buffer | null = null;
+// The app's first download: everything for browsing, but stream addresses only for
+// the home page picks (the hero preview). The player fetches a channel's streams
+// from /api/streams/:id when it opens. q: best quality; gl: countries it can play in,
+// set only when every stream is geo-locked.
+let lite: { gzip: Buffer; br: Buffer } | null = null;
+const streamsById = new Map<string, CatalogStream[]>();
 let building = false;
 const allowedHosts = new Set<string>();
 
@@ -83,6 +89,15 @@ export function allowHost(host: string) {
 function setCatalog(next: Catalog) {
   catalog = next;
   catalogGzip = zlib.gzipSync(Buffer.from(JSON.stringify(next)), { level: 9 });
+  streamsById.clear();
+  const picks = new Set(next.picks);
+  const channels = next.channels.map(({ s, lg: _lg, en: _en, ...c }) => {
+    streamsById.set(c.id, s);
+    const gl = s.every((x) => x.g) ? Array.from(new Set(s.map((x) => x.g!))) : undefined;
+    return { ...c, q: Math.max(0, ...s.map((x) => x.q || 0)), ...(gl ? { gl } : {}), ...(picks.has(c.id) ? { s } : {}) };
+  });
+  const json = Buffer.from(JSON.stringify({ ...next, channels }));
+  lite = { gzip: zlib.gzipSync(json, { level: 9 }), br: zlib.brotliCompressSync(json, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 11, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: json.length } }) };
   for (const channel of next.channels) for (const stream of channel.s) {
     try { allowHost(new URL(stream.u).host); } catch {}
   }
@@ -406,6 +421,27 @@ export function startCatalog() {
 }
 
 export function registerCatalogRoutes(app: Express) {
+  app.get("/api/catalog/lite", (req: Request, res: Response) => {
+    if (!lite) {
+      res.status(503).set("Retry-After", "30").json({ error: "Catalog is warming up", building });
+      return;
+    }
+    res.set("Cache-Control", "public, max-age=600, s-maxage=600, stale-while-revalidate=3600");
+    res.set("Content-Type", "application/json; charset=utf-8");
+    res.set("Vary", "Accept-Encoding");
+    const accept = String(req.headers["accept-encoding"] || "");
+    if (/\bbr\b/.test(accept)) res.set("Content-Encoding", "br").send(lite.br);
+    else if (/\bgzip\b/.test(accept)) res.set("Content-Encoding", "gzip").send(lite.gzip);
+    else res.send(zlib.gunzipSync(lite.gzip));
+  });
+  app.get("/api/streams/:id", (req: Request, res: Response) => {
+    const s = streamsById.get(req.params.id);
+    if (!s) {
+      res.status(catalog ? 404 : 503).json({ error: catalog ? "Channel not found" : "Catalog is warming up" });
+      return;
+    }
+    res.set("Cache-Control", "public, max-age=600, s-maxage=600, stale-while-revalidate=3600").json({ s });
+  });
   app.get("/api/catalog", (req: Request, res: Response) => {
     if (!catalog || !catalogGzip) {
       res.status(503).set("Retry-After", "30").json({ error: "Catalog is warming up", building });

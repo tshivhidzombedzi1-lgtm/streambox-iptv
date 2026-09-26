@@ -51,8 +51,10 @@ h1, h2, h3 { font-family: "Space Grotesk", "DM Sans", sans-serif; letter-spacing
 .grow { flex: 1; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 0 rgba(255,59,79,.6); animation: pulse 2s infinite; flex: none; }
-@keyframes pulse { 70% { box-shadow: 0 0 0 7px rgba(255,59,79,0); } 100% { box-shadow: 0 0 0 0 rgba(255,59,79,0); } }
+.live-dot { position: relative; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--live); flex: none; }
+/* The pulse ring animates transform/opacity only, so the GPU handles it. */
+.live-dot::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: rgba(255,59,79,.6); animation: pulse 2s infinite; }
+@keyframes pulse { 0% { transform: scale(1); opacity: 1; } 70%, 100% { transform: scale(3); opacity: 0; } }
 
 /* buttons */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: .55rem; height: 42px; padding: 0 1.3rem; border-radius: 6px; font-weight: 700; font-size: .95rem; transition: background .15s, transform .15s; white-space: nowrap; }
@@ -159,7 +161,7 @@ a.rail-title:hover span { opacity: 1; transform: none; }
 
 /* TV mode: remote-friendly focus, and none of the effects weak TV GPUs choke on. */
 .tv *, .tv *::before, .tv *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
-.tv .live-dot, .tv .card.skeleton, .tv .hero-art img { animation: none; }
+.tv .live-dot::after, .tv .card.skeleton, .tv .hero-art img { animation: none; }
 .tv .art img, .tv .hero-art img { filter: none; }
 .tv .card-link { transition: transform .12s; }
 .tv .card-link:focus { transform: scale(1.08); box-shadow: 0 0 0 4px #fff; }

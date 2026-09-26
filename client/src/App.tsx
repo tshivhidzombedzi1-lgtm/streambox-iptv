@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Toaster } from "sonner";
 import { Route, Switch, useLocation } from "wouter";
 import { ResetScreen } from "./components/Account";
@@ -8,16 +8,16 @@ import { account, loadAccount } from "./lib/account";
 import { settings, useStore } from "./lib/catalog";
 import { googleOneTap } from "./lib/google";
 import { trackView } from "./lib/growth";
-import AdminScreen from "./pages/Admin";
-import AccountScreen from "./pages/Account";
 import NotFound from "./pages/NotFound";
-import PrivacyScreen from "./pages/Privacy";
-import TermsScreen from "./pages/Terms";
-import TvGuideScreen from "./pages/TvGuide";
-import AboutScreen from "./pages/About";
-import AdvertiseScreen from "./pages/Advertise";
-import PremiumScreen from "./pages/Premium";
 import { BrowseScreen, HomeScreen, MyListScreen, SearchScreen, WatchScreen } from "./pages/Screens";
+const AdminScreen = lazy(() => import("./pages/Admin"));
+const AccountScreen = lazy(() => import("./pages/Account"));
+const PrivacyScreen = lazy(() => import("./pages/Privacy"));
+const TermsScreen = lazy(() => import("./pages/Terms"));
+const TvGuideScreen = lazy(() => import("./pages/TvGuide"));
+const AboutScreen = lazy(() => import("./pages/About"));
+const AdvertiseScreen = lazy(() => import("./pages/Advertise"));
+const PremiumScreen = lazy(() => import("./pages/Premium"));
 
 let oneTapShown = false;
 
@@ -35,6 +35,7 @@ export default function App() {
   return <ErrorBoundary>
     <Toaster theme="dark" position="bottom-center" />
     <Onboarding />
+    <Suspense fallback={<div className="app"><div className="state"><div className="loader" /></div></div>}>
     <Switch>
       <Route path="/" component={HomeScreen} />
       <Route path="/home" component={HomeScreen} />
@@ -57,5 +58,6 @@ export default function App() {
       <Route path="/admin" component={AdminScreen} />
       <Route component={NotFound} />
     </Switch>
+    </Suspense>
   </ErrorBoundary>;
 }

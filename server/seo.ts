@@ -174,7 +174,12 @@ const TV_UA = /smart-?tv|tizen|web0s|webos|netcast|hbbtv|bravia|vidaa|hisense|ph
 function adsScript(req: Request, page: Page) {
   const { client } = readAdsConfig();
   if (!client || page.path.startsWith("/watch/") || TV_UA.test(req.headers["user-agent"] || "")) return "";
-  return `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${esc(client)}" crossorigin="anonymous"></script>`;
+  // The account meta tag keeps AdSense site verification; the script itself loads on
+  // the first scroll/tap or a few seconds after the page is up, so it never slows
+  // the first paint (the biggest part of mobile PageSpeed).
+  const src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(client)}`;
+  return `<meta name="google-adsense-account" content="${esc(client)}" />
+    <script>(function(){var done=0;function go(){if(done)return;done=1;if(document.querySelector('script[src*="adsbygoogle.js"]'))return;var s=document.createElement("script");s.async=1;s.crossOrigin="anonymous";s.src=${JSON.stringify(src)};document.head.appendChild(s)}["scroll","pointerdown","keydown","touchstart"].forEach(function(e){addEventListener(e,go,{once:true,passive:true})});addEventListener("load",function(){setTimeout(go,4000)})})();</script>`;
 }
 
 function render(template: string, page: Page, extraHead = "") {

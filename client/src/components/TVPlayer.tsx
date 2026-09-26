@@ -16,7 +16,8 @@ type Phase = "loading" | "playing" | "paused" | "buffering" | "switching" | "fai
 
 function buildSources(channel: Channel, saver: boolean): Source[] {
   // In data-saver mode try the lightest listed stream first.
-  const streams = saver ? [...channel.s].sort((a, b) => (a.q || 9999) - (b.q || 9999) || a.p - b.p) : channel.s;
+  const all = channel.s || [];
+  const streams = saver ? [...all].sort((a, b) => (a.q || 9999) - (b.q || 9999) || a.p - b.p) : all;
   return streams.flatMap((s, i) => {
     const label = `Source ${i + 1}${s.q ? ` · ${s.q}p` : ""}`;
     // Local-only (geo-blocked) streams must come straight from the broadcaster: never relay them.

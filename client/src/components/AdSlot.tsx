@@ -22,9 +22,25 @@ function loadSponsors() {
   return sponsors;
 }
 
+// Ads load after the page is up: on the first scroll/tap/key, or a few seconds in,
+// so they never hold back the first paint.
+let idle: Promise<void> | null = null;
+function afterFirstPaint() {
+  if (!idle) idle = new Promise<void>((resolve) => {
+    const go = () => resolve();
+    for (const e of ["scroll", "pointerdown", "keydown", "touchstart"]) window.addEventListener(e, go, { once: true, passive: true });
+    const later = () => window.setTimeout(go, 4000);
+    if (document.readyState === "complete") later(); else window.addEventListener("load", later, { once: true });
+  });
+  return idle;
+}
+
 function addScript(client: string) {
   if (scriptAdded) return;
   scriptAdded = true;
+  afterFirstPaint().then(() => injectScript(client));
+}
+function injectScript(client: string) {
   // The server already puts the script in the page <head> for AdSense (server/seo.ts).
   if (document.querySelector('script[src*="adsbygoogle.js"]')) return;
   const s = document.createElement("script");

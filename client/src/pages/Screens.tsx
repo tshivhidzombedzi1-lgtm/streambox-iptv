@@ -1,17 +1,18 @@
 import type Hls from "hls.js";
 import { Check, Info, Play, Plus, RadioTower, Search, Volume2, VolumeX, X } from "lucide-react";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Link, useLocation, useParams, useSearch } from "wouter";
-import TVPlayer from "@/components/TVPlayer";
 import { ChannelArt, Grid, hue, Rail, TopNav } from "@/components/TV";
 import AdSlot, { useAds } from "@/components/AdSlot";
 import { ShareButton } from "@/components/Share";
 import { hhmm, onNow, useGuide } from "@/lib/epg";
 import {
+  loadStreams,
   type Catalog, type Channel, CATEGORIES, categoryLabel, countryName, getChannel, guessCountry, isSlowNetwork, isTV,
   myList, qualityTag, recents, settings, streamSrc, toggleMyList, useCatalog, useStore,
 } from "@/lib/catalog";
+const TVPlayer = lazy(() => import("@/components/TVPlayer"));
 
 const inCat = (ch: Channel, cat: string) => ch.k.includes(cat);
 
@@ -33,7 +34,7 @@ function HeroPreview({ channel }: { channel: Channel }) {
   const [muted, setMuted] = useState(true);
   useEffect(() => {
     const video = ref.current;
-    const stream = channel.s.find((s) => !s.p) || channel.s[0];
+    const stream = channel.s?.find((s) => !s.p) || channel.s?.[0];
     if (!video || !stream) return;
     setReady(false);
     let hls: Hls | null = null;
@@ -75,7 +76,7 @@ function Hero({ picks }: { picks: Channel[] }) {
   if (!channel) return null;
   const saved = list.includes(channel.id);
   return <section className="hero" style={{ "--h": hue(channel.n) } as React.CSSProperties}>
-    <div className="hero-art">{channel.l && <img src={channel.l} alt="" />}</div>
+    <div className="hero-art">{channel.l && <img key={channel.id} src={channel.l} alt="" fetchPriority="high" />}</div>
     {previews && <HeroPreview key={channel.id} channel={channel} />}
     <div className="hero-shade" />
     <div className="hero-copy">
@@ -267,6 +268,14 @@ export function WatchScreen() {
   }, [filter, list, catalog]);
   const activeRef = useRef<HTMLAnchorElement>(null);
   useEffect(() => { if (drawer) activeRef.current?.scrollIntoView({ block: "center" }); }, [drawer]);
+  // Streams come separately from the channel list: fetch this channel's before playing.
+  const [streams, setStreams] = useState<{ id: string; error: boolean } | null>(null);
+  useEffect(() => {
+    if (!channel) return;
+    let live = true;
+    loadStreams(channel).then(() => live && setStreams({ id: channel.id, error: false })).catch(() => live && setStreams({ id: channel.id, error: true }));
+    return () => { live = false; };
+  }, [channel]);
 
   if (!catalog) return <div className="watch"><Loading error={error} /></div>;
   if (!channel) return <div className="watch"><div className="state"><RadioTower size={36} /><h2>Channel not found</h2><p>It may have gone off air.</p><Link href="/" className="btn btn-light">Back to home</Link></div></div>;
@@ -279,8 +288,10 @@ export function WatchScreen() {
   };
   const back = () => (window.history.length > 1 ? window.history.back() : navigate("/"));
 
+  const ready = streams?.id === channel.id && !streams.error;
   return <div className="watch">
-    <TVPlayer key={channel.id} channel={channel} onBack={back} onPrev={() => go(-1)} onNext={() => go(1)} onToggleList={() => setDrawer((d) => !d)} />
+    {!ready ? <div className="state">{streams?.error ? <><RadioTower size={36} /><h2>Couldn't load {channel.n}</h2><p>Check your connection and try again.</p><button className="btn btn-light" onClick={() => window.location.reload()}>Try again</button></> : <div className="loader" />}</div>
+    : <Suspense fallback={<div className="state"><div className="loader" /></div>}><TVPlayer key={channel.id} channel={channel} onBack={back} onPrev={() => go(-1)} onNext={() => go(1)} onToggleList={() => setDrawer((d) => !d)} /></Suspense>}
     <aside className={`drawer ${drawer ? "open" : ""}`} aria-hidden={!drawer}>
       <div className="drawer-head"><h2>Channels</h2><button onClick={() => setDrawer(false)} aria-label="Close"><X size={22} /></button></div>
       <div className="filter-search"><Search size={16} /><input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Jump to any channel" /></div>
